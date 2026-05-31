@@ -113,7 +113,7 @@ export const Buscar = () => {
 
     // Call hook to queue download
     triggerToastAndRedirect(episodesToDownload.length);
-    
+
     // Asynchronously trigger downloading so the redirect happens fast
     agregarTodos(episodesToDownload);
   };
@@ -251,7 +251,7 @@ export const Buscar = () => {
               Busca tu <span className="bg-gradient-to-r from-accent-red to-accent-purple bg-clip-text text-transparent">Anime</span> Favorito
             </h1>
             <p className="text-sm text-slate-400 max-w-md mx-auto">
-              Todo corre 100% en tu máquina local. Busca, selecciona tus capítulos preferidos y descárgalos directo.
+              Selecciona tus capítulos preferidos y descárgalos directo.
             </p>
 
             <form onSubmit={handleSearch} className="flex gap-2">
@@ -304,139 +304,136 @@ export const Buscar = () => {
         </div>
       )}
 
-    {/* Immersive Online Video Player Modal */}
-    {activeStreamingEpisode && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4 sm:p-6">
-        <div className="relative w-full max-w-4xl glass-premium rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-bg-secondary/50">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-accent-blue block mb-0.5">
-                Reproduciendo en Línea
-              </span>
-              <h3 className="text-lg font-bold text-white line-clamp-1 leading-tight">
-                {animeInfo?.titulo} — {activeStreamingEpisode.nombre}
-              </h3>
-            </div>
-            <button
-              onClick={() => {
-                setActiveStreamingEpisode(null);
-                setStreamingInfo(null);
-                setSelectedServerUrl('');
-              }}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400 font-bold"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-            {loadingStream ? (
-              <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5 space-y-4">
-                <div className="w-12 h-12 rounded-full border-4 border-accent-blue/30 border-t-accent-blue animate-spin" />
-                <span className="text-sm font-semibold text-slate-400">Resolviendo enlaces de streaming...</span>
+      {/* Immersive Online Video Player Modal */}
+      {activeStreamingEpisode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4 sm:p-6">
+          <div className="relative w-full max-w-4xl glass-premium rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-bg-secondary/50">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-accent-blue block mb-0.5">
+                  Reproduciendo en Línea
+                </span>
+                <h3 className="text-lg font-bold text-white line-clamp-1 leading-tight">
+                  {animeInfo?.titulo} — {activeStreamingEpisode.nombre}
+                </h3>
               </div>
-            ) : streamingInfo ? (
-              <div className="space-y-6">
-                {/* Iframe Video Container */}
-                {selectedServerUrl ? (
-                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-2xl">
-                    <iframe
-                      src={selectedServerUrl}
-                      title="Video Player"
-                      referrerPolicy="no-referrer"
-                      allowFullScreen
-                      sandbox="allow-scripts allow-same-origin allow-forms"
-                      className="absolute inset-0 w-full h-full border-none"
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5">
-                    <span className="text-sm font-semibold text-slate-400">No hay servidores disponibles para este idioma.</span>
-                  </div>
-                )}
+              <button
+                onClick={() => {
+                  setActiveStreamingEpisode(null);
+                  setStreamingInfo(null);
+                  setSelectedServerUrl('');
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400 font-bold"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-                {/* Player Controls (Language and Servers) */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-bg-secondary/40 border border-white/5 p-4 rounded-2xl">
-                  {/* Language Selector */}
-                  <div className="md:col-span-4 space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                      Idioma / Versión:
-                    </span>
-                    <div className="flex bg-bg-card p-1 rounded-xl border border-white/5">
-                      <button
-                        onClick={() => {
-                          setSelectedSubDub('sub');
-                          const subs = streamingInfo.servers?.sub || [];
-                          if (subs.length > 0) setSelectedServerUrl(subs[0].url);
-                          else setSelectedServerUrl('');
-                        }}
-                        disabled={!streamingInfo.servers?.sub || streamingInfo.servers.sub.length === 0}
-                        className={`flex-1 py-2 text-xs font-extrabold uppercase rounded-lg tracking-wider transition-all duration-200 ${
-                          selectedSubDub === 'sub'
-                            ? 'bg-accent-blue text-white shadow-md glow-blue'
-                            : 'text-slate-500 hover:text-slate-300 disabled:opacity-30 disabled:hover:text-slate-500'
-                        }`}
-                      >
-                        Subtitulado (SUB)
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedSubDub('dub');
-                          const dubs = streamingInfo.servers?.dub || [];
-                          if (dubs.length > 0) setSelectedServerUrl(dubs[0].url);
-                          else setSelectedServerUrl('');
-                        }}
-                        disabled={!streamingInfo.servers?.dub || streamingInfo.servers.dub.length === 0}
-                        className={`flex-1 py-2 text-xs font-extrabold uppercase rounded-lg tracking-wider transition-all duration-200 ${
-                          selectedSubDub === 'dub'
-                            ? 'bg-accent-purple text-white shadow-md glow-purple'
-                            : 'text-slate-500 hover:text-slate-300 disabled:opacity-30 disabled:hover:text-slate-500'
-                        }`}
-                      >
-                        Doblado (DUB)
-                      </button>
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              {loadingStream ? (
+                <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5 space-y-4">
+                  <div className="w-12 h-12 rounded-full border-4 border-accent-blue/30 border-t-accent-blue animate-spin" />
+                  <span className="text-sm font-semibold text-slate-400">Resolviendo enlaces de streaming...</span>
+                </div>
+              ) : streamingInfo ? (
+                <div className="space-y-6">
+                  {/* Iframe Video Container */}
+                  {selectedServerUrl ? (
+                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-2xl">
+                      <iframe
+                        src={selectedServerUrl}
+                        title="Video Player"
+                        referrerPolicy="no-referrer"
+                        allowFullScreen
+                        sandbox="allow-scripts allow-same-origin allow-forms"
+                        className="absolute inset-0 w-full h-full border-none"
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5">
+                      <span className="text-sm font-semibold text-slate-400">No hay servidores disponibles para este idioma.</span>
+                    </div>
+                  )}
 
-                  {/* Server List */}
-                  <div className="md:col-span-8 space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                      Servidor de Streaming:
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {((streamingInfo.servers?.[selectedSubDub]) || []).map((srv, index) => {
-                        const isActive = selectedServerUrl === srv.url;
-                        return (
-                          <button
-                            key={index}
-                            onClick={() => setSelectedServerUrl(srv.url)}
-                            className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all border ${
-                              isActive
-                                ? 'bg-accent-blue border-accent-blue/30 text-white shadow-md'
-                                : 'bg-bg-card border-white/5 text-slate-300 hover:bg-white/5'
+                  {/* Player Controls (Language and Servers) */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-bg-secondary/40 border border-white/5 p-4 rounded-2xl">
+                    {/* Language Selector */}
+                    <div className="md:col-span-4 space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                        Idioma / Versión:
+                      </span>
+                      <div className="flex bg-bg-card p-1 rounded-xl border border-white/5">
+                        <button
+                          onClick={() => {
+                            setSelectedSubDub('sub');
+                            const subs = streamingInfo.servers?.sub || [];
+                            if (subs.length > 0) setSelectedServerUrl(subs[0].url);
+                            else setSelectedServerUrl('');
+                          }}
+                          disabled={!streamingInfo.servers?.sub || streamingInfo.servers.sub.length === 0}
+                          className={`flex-1 py-2 text-xs font-extrabold uppercase rounded-lg tracking-wider transition-all duration-200 ${selectedSubDub === 'sub'
+                              ? 'bg-accent-blue text-white shadow-md glow-blue'
+                              : 'text-slate-500 hover:text-slate-300 disabled:opacity-30 disabled:hover:text-slate-500'
                             }`}
-                          >
-                            {srv.server}
-                          </button>
-                        );
-                      })}
+                        >
+                          Subtitulado (SUB)
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedSubDub('dub');
+                            const dubs = streamingInfo.servers?.dub || [];
+                            if (dubs.length > 0) setSelectedServerUrl(dubs[0].url);
+                            else setSelectedServerUrl('');
+                          }}
+                          disabled={!streamingInfo.servers?.dub || streamingInfo.servers.dub.length === 0}
+                          className={`flex-1 py-2 text-xs font-extrabold uppercase rounded-lg tracking-wider transition-all duration-200 ${selectedSubDub === 'dub'
+                              ? 'bg-accent-purple text-white shadow-md glow-purple'
+                              : 'text-slate-500 hover:text-slate-300 disabled:opacity-30 disabled:hover:text-slate-500'
+                            }`}
+                        >
+                          Doblado (DUB)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Server List */}
+                    <div className="md:col-span-8 space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                        Servidor de Streaming:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {((streamingInfo.servers?.[selectedSubDub]) || []).map((srv, index) => {
+                          const isActive = selectedServerUrl === srv.url;
+                          return (
+                            <button
+                              key={index}
+                              onClick={() => setSelectedServerUrl(srv.url)}
+                              className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all border ${isActive
+                                  ? 'bg-accent-blue border-accent-blue/30 text-white shadow-md'
+                                  : 'bg-bg-card border-white/5 text-slate-300 hover:bg-white/5'
+                                }`}
+                            >
+                              {srv.server}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5">
-                <span className="text-sm font-semibold text-slate-400">Error al cargar la información de streaming de este episodio.</span>
-              </div>
-            )}
+              ) : (
+                <div className="aspect-video w-full rounded-2xl bg-bg-secondary flex flex-col justify-center items-center py-20 border border-white/5">
+                  <span className="text-sm font-semibold text-slate-400">Error al cargar la información de streaming de este episodio.</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 };
