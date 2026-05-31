@@ -1,0 +1,48 @@
+# Dependencias de Node (no subir al repositorio)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Configuraciones de Entorno y Claves Privadas (¡Sensible!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+
+# Salidas de Compilación y Producción
+/frontend/dist/
+/frontend/build/
+.svelte-kit/
+.next/
+out/
+
+# Carpeta de Descargas de Anime (Evitar subir gigabytes de vídeos descargados)
+/backend/downloads/
+/backend/descargas/
+*.mp4
+*.mkv
+*.webm
+*.avi
+
+# Archivos del Sistema Operativo y del Entorno de Desarrollo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Carpetas de Editores de Código e IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Archivos de caché del Agente
+.gemini/
+.antigravity/
