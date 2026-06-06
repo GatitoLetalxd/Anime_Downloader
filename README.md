@@ -4,19 +4,17 @@
 
 Este proyecto ha sido creado y diseñado por **Rogeero Daniel Montufar Merma**, con el objetivo de ofrecer una experiencia multimedia premium, fluida y sin anuncios molestos.
 
-> [!NOTE]  
-> **Aclaración sobre la API**: El motor de scraping y la API subyacente que recopila los enlaces y metadatos no son de autoría propia; pertenecen al excelente proyecto de código abierto **Anime1V API Engine** creado y mantenido por **FxxMorgan**.
-
 ---
 
 ## 🌟 Características Destacadas
 
 *   **⚡ Buscador Avanzado**: Encuentra cualquier anime en segundos con indexación rápida y tolerante a tildes o variaciones de nombre.
-*   **📺 Ver Online (Streaming Integrado) [¡NUEVO!]**: Modal interactivo premium con desenfoque de fondo (*glassmorphic backdrop*) que te permite reproducir capítulos en línea directamente en la app.
+*   **📺 Ver Online (Streaming Integrado)**: Modal interactivo premium con desenfoque de fondo (*glassmorphic backdrop*) que te permite reproducir capítulos en línea directamente en la app.
 *   **🌐 Selectores de Idioma y Servidor**: Alterna instantáneamente entre versiones subtituladas (**SUB**) y dobladas (**DUB**), y escoge entre múltiples servidores de streaming de alta velocidad (como *Streamwish*, *Vidhide*, *VOE*, etc.).
 *   **📥 Descargas de Alta Velocidad**: Descarga episodios directamente a tu disco local en resoluciones de hasta 1080p, con soporte para transmisiones HLS (m3u8) y descargas tradicionales mp4.
 *   **📊 Cola de Descargas en Tiempo Real**: Panel interactivo con progreso en porcentaje, velocidad de descarga en MB/s e integración de comunicación en tiempo real mediante **Socket.io**.
-*   **🎨 Interfaz Estética Premium**: Diseño moderno con modo oscuro profundo, acentos vibrantes (rojo carmesí y morado neón), animaciones fluidas y componentes interactivos responsivos.
+*   **👤 Perfil y Seguridad**: Selector dinámico de avatares y opción segura para cambiar contraseña (con validación de seguridad e indicador de fortaleza) integrada en el panel del usuario.
+*   **🎨 Interfaz Estética Premium**: Diseño moderno con modo oscuro profundo (negro azulado premium), acentos vibrantes en cian brillante y azul eléctrico, micro-animaciones fluidas y componentes responsivos profesionales libres de emojis informales.
 
 ---
 
@@ -36,6 +34,7 @@ La plataforma está construida utilizando un moderno stack de desarrollo web div
 *   **Fluent-FFmpeg** & **FFmpeg-Static** para descargar y ensamblar flujos de vídeo HLS/m3u8 de forma nativa.
 *   **Axios** & **Cheerio** para peticiones web y análisis de selectores HTML en los proveedores.
 *   **Puppeteer** como motor de contingencia para resolver enlaces protegidos por JS.
+*   **Bcrypt.js** para el almacenamiento seguro y validación de contraseñas de usuarios.
 
 ---
 
@@ -81,8 +80,12 @@ El script iniciará el backend en `http://localhost:3001`, el frontend en `http:
 *   **Creador del Proyecto / Frontend / Integraciones**: [Rogeero Daniel Montufar Merma](https://github.com/tu-usuario-si-deseas-colocarlo)
 *   **Creador de la API y Scraper**: [FxxMorgan](https://github.com/FxxMorgan) (por su excelente motor [Anime1V API Engine](https://github.com/FxxMorgan)).
 
+> [!NOTE]  
+> **Aclaración sobre la API**: El motor de scraping y la API subyacente que recopila los enlaces y metadatos no son de autoría propia; pertenecen al excelente proyecto de código abierto **Anime1V API Engine** creado y mantenido por **FxxMorgan**.
+
 ---
 
 ## 📄 Licencia
 
 Este proyecto está distribuido bajo la licencia MIT. Siéntete libre de clonarlo, modificarlo y compartirlo.
+
