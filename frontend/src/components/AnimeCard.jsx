@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { getProxiedImageUrl } from '../lib/api';
 
-export const AnimeCard = ({ anime, onClick }) => {
+export const AnimeCard = memo(({ anime, onClick }) => {
   if (!anime) return <SkeletonAnimeCard />;
 
   const { titulo, imagen, tipo, año } = anime;
@@ -35,11 +35,18 @@ export const AnimeCard = ({ anime, onClick }) => {
 
         {/* Badges container */}
         <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
-          {tipo && (
-            <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-accent-red/90 text-white shadow-md">
-              {tipo}
-            </span>
-          )}
+          <div className="flex flex-col gap-1 items-start">
+            {tipo && (
+              <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-accent-red/90 text-white shadow-md">
+                {tipo}
+              </span>
+            )}
+            {anime.source && (
+              <span className="px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide rounded-md bg-accent-blue/90 text-white shadow-md">
+                {anime.source}
+              </span>
+            )}
+          </div>
           {año && (
             <span className="px-2 py-1 text-[10px] font-bold rounded-md bg-bg-primary/80 backdrop-blur-sm text-slate-300 border border-white/10">
               {año}
@@ -56,9 +63,9 @@ export const AnimeCard = ({ anime, onClick }) => {
       </div>
     </div>
   );
-};
+});
 
-export const SkeletonAnimeCard = () => {
+export const SkeletonAnimeCard = memo(() => {
   return (
     <div className="rounded-2xl overflow-hidden border border-white/5 bg-bg-card shadow-lg">
       <div className="aspect-[3/4] w-full skeleton relative" />
@@ -67,6 +74,6 @@ export const SkeletonAnimeCard = () => {
       </div>
     </div>
   );
-};
+});
 
 export default AnimeCard;

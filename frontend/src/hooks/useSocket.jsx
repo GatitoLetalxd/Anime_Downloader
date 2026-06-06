@@ -9,7 +9,10 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
+      API_URL = API_URL.replace('localhost', window.location.hostname);
+    }
     
     // Connect to WebSocket
     const socket = io(API_URL, {

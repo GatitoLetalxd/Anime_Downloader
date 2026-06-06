@@ -26,5 +26,13 @@ start cmd /k "cd backend && npm run dev"
 timeout /t 3 >nul
 start cmd /k "cd frontend && npm run dev"
 timeout /t 3 >nul
+
+echo ===================================================
+echo   El servidor se ha configurado para acceso en red!
+echo   Para abrirlo en tu CELULAR, revisa la ventana
+echo   negra de Vite y busca la direccion 'Network'
+echo   (Ejemplo: http://192.168.x.x:5173)
+echo ===================================================
+
 start http://localhost:5173
 echo Listo! Abriendo el navegador...

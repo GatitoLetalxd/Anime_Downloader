@@ -119,7 +119,7 @@ export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelec
         </div>
 
         {/* Range Selector */}
-        <div className="md:col-span-5 flex items-center space-x-2">
+        <div className="md:col-span-5 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-slate-400">Rango:</span>
           <input
             type="number"
@@ -151,7 +151,7 @@ export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelec
         </div>
 
         {/* Selection summary and submit */}
-        <div className="md:col-span-3 flex justify-end items-center space-x-3">
+        <div className="md:col-span-3 flex justify-start md:justify-end items-center space-x-3 mt-2 md:mt-0">
           <span className="text-xs text-slate-400 font-semibold">
             {selectedCount} seleccionados
           </span>
@@ -167,7 +167,7 @@ export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelec
       </div>
 
       {/* Select All Bar */}
-      <div className="flex justify-between items-center bg-bg-card border border-white/5 px-4 py-3 rounded-xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-bg-card border border-white/5 px-4 py-3 rounded-xl gap-2">
         <label className="flex items-center space-x-3 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -231,9 +231,9 @@ export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelec
                         onVerOnline(ep);
                       }}
                       title="Ver Online"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/5 hover:bg-accent-blue hover:text-white transition-colors duration-200 text-slate-400"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5 border border-white/5 hover:bg-accent-blue hover:text-white transition-colors duration-200 text-slate-400 touch-manipulation"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -244,9 +244,9 @@ export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelec
                       e.stopPropagation();
                       onDownloadSelected([ep.url]);
                     }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/5 border border-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400 touch-manipulation"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </button>

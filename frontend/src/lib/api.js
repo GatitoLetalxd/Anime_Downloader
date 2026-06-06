@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
+  API_URL = API_URL.replace('localhost', window.location.hostname);
+}
 const API_KEY = import.meta.env.VITE_API_KEY || 'mi_clave_local_123';
 
 const client = axios.create({
@@ -39,10 +42,11 @@ export const pingAPI = async () => {
   }
 };
 
-export const buscarAnime = async (query) => {
+export const buscarAnime = async (query, genre = '', domain = '', signal = null) => {
   try {
     const response = await client.get(`/api/v1/anime/search`, {
-      params: { q: query },
+      params: { q: query, genre, domain },
+      signal,
     });
     const backendResults = response.data?.data?.results || [];
     return backendResults.map((item) => ({
@@ -52,22 +56,60 @@ export const buscarAnime = async (query) => {
       imagen: item.image,
       tipo: item.type,
       año: item.year,
+      source: item.source,
     }));
   } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log('Search request cancelled');
+      return [];
+    }
     console.error('Error searching anime:', error);
     throw error;
   }
 };
 
-export const obtenerInfo = async (url) => {
+export const obtenerRecomendaciones = async (domain = '') => {
+  try {
+    const response = await client.get(`/api/v1/anime/recommendations`, {
+      params: { domain },
+    });
+    const backendResults = response.data?.data?.results || [];
+    return backendResults.map((item) => ({
+      id: item.url,
+      titulo: item.title,
+      url: item.url,
+      imagen: item.image,
+      tipo: item.type,
+      año: item.year,
+      source: item.source,
+    }));
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+    throw error;
+  }
+};
+
+export const obtenerGeneros = async () => {
+  try {
+    const response = await client.get(`/api/v1/anime/genres`);
+    return response.data?.data || [];
+  } catch (error) {
+    console.error('Error fetching genres:', error);
+    throw error;
+  }
+};
+
+export const obtenerInfo = async (url, signal = null) => {
   try {
     const response = await client.get(`/api/v1/anime/info`, {
       params: { url },
+      signal,
     });
     const resData = response.data?.data || {};
     return {
       titulo: resData.title || '',
       descripcion: resData.description || '',
+      imagen: resData.image || '',
       generos: (resData.genres || []).map((g) => (typeof g === 'string' ? g : g.name || '')),
       episodios: (resData.episodes || []).map((e) => ({
         nombre: e.title || `Episodio ${e.number}`,
@@ -76,6 +118,10 @@ export const obtenerInfo = async (url) => {
       })),
     };
   } catch (error) {
+    if (axios.isCancel(error)) {
+      console.log('Info request cancelled');
+      return null;
+    }
     console.error('Error fetching anime info:', error);
     throw error;
   }
@@ -125,4 +171,6 @@ export default {
   iniciarDescarga,
   obtenerProgreso,
   getProxiedImageUrl,
+  obtenerRecomendaciones,
+  obtenerGeneros,
 };

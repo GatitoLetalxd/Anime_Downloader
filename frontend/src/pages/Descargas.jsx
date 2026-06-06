@@ -150,7 +150,7 @@ export const Descargas = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-2 flex-shrink-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto gap-2 flex-shrink-0 mt-3 sm:mt-0">
                     {/* Simulated directory open button */}
                     <button
                       onClick={() => alert(`Las descargas se guardan en el directorio del servidor: ${d.filePath || 'backend/downloads'}`)}
@@ -166,7 +166,7 @@ export const Descargas = () => {
                       href={d.downloadUrl || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`px-4 py-2 rounded-xl bg-accent-purple hover:bg-accent-purple/90 text-white text-xs font-bold transition-all shadow-md flex items-center space-x-2 ${!d.downloadUrl && 'pointer-events-none opacity-50'}`}
+                      className={`px-4 py-2 w-full sm:w-auto flex items-center justify-center rounded-xl bg-accent-purple hover:bg-accent-purple/90 text-white text-xs font-bold transition-all shadow-md space-x-2 ${!d.downloadUrl && 'pointer-events-none opacity-50'}`}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -192,8 +192,8 @@ export const Descargas = () => {
                   key={d.id || d.downloadId}
                   className="bg-bg-secondary border border-rose-500/10 p-4 rounded-xl shadow-md flex flex-col justify-between gap-3 hover:border-rose-500/20 transition-all duration-200"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="space-y-1 w-full">
                       <h4 className="text-sm font-bold text-white">{d.title}</h4>
                       <p className="text-xs text-rose-400 font-medium leading-relaxed bg-rose-500/5 px-3 py-2 rounded-lg border border-rose-500/10 mt-2">
                         Error: {d.error || 'Error desconocido'}
@@ -202,7 +202,7 @@ export const Descargas = () => {
 
                     <button
                       onClick={() => handleRetry(d)}
-                      className="px-4 py-2 rounded-xl bg-accent-red hover:bg-accent-red/90 text-white text-xs font-extrabold tracking-wide transition-all shadow-md flex items-center space-x-2 flex-shrink-0"
+                      className="px-4 py-2 w-full sm:w-auto rounded-xl bg-accent-red hover:bg-accent-red/90 text-white text-xs font-extrabold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2 flex-shrink-0"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.706 9h-2.22" />

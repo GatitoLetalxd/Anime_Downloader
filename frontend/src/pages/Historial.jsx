@@ -167,9 +167,9 @@ export const Historial = () => {
                 <h4 className="text-sm font-bold text-white line-clamp-1">
                   {item.title}
                 </h4>
-                <p className="text-xs text-slate-400 font-semibold flex items-center space-x-3">
+                <p className="text-xs text-slate-400 font-semibold flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Tamaño: {item.size || 'Desconocido'}</span>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-600 hidden sm:inline">•</span>
                   <span>Descargado el: {new Date(item.completedAt).toLocaleDateString()} a las {new Date(item.completedAt).toLocaleTimeString()}</span>
                 </p>
                 {item.filePath && (
@@ -179,7 +179,7 @@ export const Historial = () => {
                 )}
               </div>
 
-              <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="flex items-center justify-end w-full sm:w-auto mt-3 sm:mt-0 flex-shrink-0">
                 {/* Delete from history button */}
                 <button
                   onClick={() => handleRemoveItem(item.downloadId)}
