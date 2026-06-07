@@ -28,7 +28,7 @@ router.post(
     }
 
     const result = await db.query(
-      "SELECT id, username, email, password, role, avatar, is_banned FROM users WHERE email = $1",
+      "SELECT id, username, email, password, role, avatar, is_banned, expires_at FROM users WHERE email = $1",
       [email.toLowerCase().trim()]
     );
 
@@ -40,6 +40,10 @@ router.post(
 
     if (user.is_banned) {
       throw new ApiError(403, "Tu cuenta está suspendida. Contacta al administrador.");
+    }
+
+    if (user.role !== "admin" && user.expires_at && new Date(user.expires_at) < new Date()) {
+      throw new ApiError(403, "Tu acceso ha expirado. Por favor, comunícate con el administrador.");
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -65,6 +69,7 @@ router.post(
         email: user.email,
         role: user.role,
         avatar: user.avatar,
+        expires_at: user.expires_at,
       },
     });
   })
@@ -88,7 +93,7 @@ router.post(
     }
 
     const result = await db.query(
-      "SELECT id, username, email, role, avatar, is_banned FROM users WHERE id = $1",
+      "SELECT id, username, email, role, avatar, is_banned, expires_at FROM users WHERE id = $1",
       [decoded.id]
     );
 
@@ -102,6 +107,10 @@ router.post(
       throw new ApiError(403, "Tu cuenta está suspendida.");
     }
 
+    if (user.role !== "admin" && user.expires_at && new Date(user.expires_at) < new Date()) {
+      throw new ApiError(403, "Tu acceso ha expirado. Por favor, comunícate con el administrador.");
+    }
+
     const accessToken = signAccessToken({ id: user.id, username: user.username, role: user.role });
 
     res.status(200).json({
@@ -113,6 +122,7 @@ router.post(
         email: user.email,
         role: user.role,
         avatar: user.avatar,
+        expires_at: user.expires_at,
       },
     });
   })
@@ -137,6 +147,7 @@ router.get(
         email: req.user.email,
         role: req.user.role,
         avatar: req.user.avatar,
+        expires_at: req.user.expires_at,
       },
     });
   })

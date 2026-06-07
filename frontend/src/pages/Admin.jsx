@@ -104,15 +104,30 @@ export default function Admin() {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [modal, setModal] = useState(null); // { type: 'ban'|'unban'|'delete', userId, username }
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null); // { text, type: 'success' | 'error' }
 
   // Create user form
-  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', role: 'user' });
+  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', role: 'user', durationDays: '0', customDays: '' });
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Edit user state
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ username: '', email: '', password: '', role: 'user', expires_at: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const showToast = (text, type = 'success') => {
     setToast({ text, type });
@@ -134,6 +149,7 @@ export default function Admin() {
     try {
       const params = new URLSearchParams({ page, limit: 15 });
       if (filter) params.set('filter', filter);
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       const res = await authFetch(`${API_BASE}/api/admin/users?${params}`);
       const data = await res.json();
       if (data.success) {
@@ -143,7 +159,7 @@ export default function Admin() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [authFetch, filter]);
+  }, [authFetch, filter, debouncedSearch]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchUsers(1); }, [fetchUsers]);
@@ -176,15 +192,28 @@ export default function Admin() {
     e.preventDefault();
     setCreateError('');
     setIsCreating(true);
+
+    const parsedDays = createForm.durationDays === 'custom'
+      ? parseInt(createForm.customDays) || 0
+      : parseInt(createForm.durationDays);
+
+    const payload = {
+      username: createForm.username,
+      email: createForm.email,
+      password: createForm.password,
+      role: createForm.role,
+      durationDays: createForm.role === 'admin' ? 0 : parsedDays
+    };
+
     try {
       const res = await authFetch(`${API_BASE}/api/admin/users`, {
         method: 'POST',
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
         showToast(`Usuario '${createForm.username}' creado con éxito`, 'success');
-        setCreateForm({ username: '', email: '', password: '', role: 'user' });
+        setCreateForm({ username: '', email: '', password: '', role: 'user', durationDays: '0', customDays: '' });
         setShowCreateForm(false);
         fetchUsers(1);
         fetchStats();
@@ -198,10 +227,69 @@ export default function Admin() {
     }
   };
 
+  const handleEditUser = async (e) => {
+    e.preventDefault();
+    setEditError('');
+    setIsEditing(true);
+
+    const payload = {
+      username: editForm.username,
+      email: editForm.email,
+      role: editForm.role,
+      expires_at: editForm.role === 'admin' || !editForm.expires_at ? null : new Date(editForm.expires_at).toISOString()
+    };
+
+    if (editForm.password && editForm.password.trim().length > 0) {
+      payload.password = editForm.password;
+    }
+
+    try {
+      const res = await authFetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Usuario '${editForm.username}' actualizado con éxito`, 'success');
+        setEditingUser(null);
+        fetchUsers(pagination.page);
+        fetchStats();
+      } else {
+        setEditError(data.message || 'Error al actualizar usuario');
+      }
+    } catch (_err) {
+      setEditError('Error de conexión');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   const formatDate = (iso) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   };
+
+  const getExpirationStatus = (user) => {
+    if (user.role === 'admin') return { text: 'Ilimitado', style: 'text-accent-blue/80 font-bold' };
+    if (!user.expires_at) return { text: 'Ilimitado', style: 'text-accent-blue/80 font-bold' };
+
+    const expiry = new Date(user.expires_at);
+    const now = new Date();
+
+    if (expiry < now) {
+      return { text: 'Expirado', style: 'text-red-400 font-bold' };
+    }
+
+    const diffTime = expiry - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      return { text: 'Expira mañana', style: 'text-amber-400 font-semibold animate-pulse' };
+    }
+
+    return { text: `Expira en ${diffDays} días`, style: diffDays <= 5 ? 'text-amber-500 font-semibold' : 'text-slate-300' };
+  };
+
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -287,7 +375,48 @@ export default function Admin() {
                 <option value="admin">Admin</option>
               </select>
             </div>
+
+            {createForm.role === 'user' && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="cu-duration" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Duración de Acceso</label>
+                  <select
+                    id="cu-duration"
+                    value={createForm.durationDays}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, durationDays: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all appearance-none"
+                  >
+                    <option value="0" className="bg-bg-secondary text-white">Ilimitado</option>
+                    <option value="7" className="bg-bg-secondary text-white">7 Días</option>
+                    <option value="30" className="bg-bg-secondary text-white">30 Días</option>
+                    <option value="60" className="bg-bg-secondary text-white">2 Meses (+60d)</option>
+                    <option value="90" className="bg-bg-secondary text-white">3 Meses (+90d)</option>
+                    <option value="120" className="bg-bg-secondary text-white">4 Meses (+120d)</option>
+                    <option value="180" className="bg-bg-secondary text-white">6 Meses (+180d)</option>
+                    <option value="365" className="bg-bg-secondary text-white">1 Año (+365d)</option>
+                    <option value="custom" className="bg-bg-secondary text-white">Días Personalizados</option>
+                  </select>
+                </div>
+
+                {createForm.durationDays === 'custom' && (
+                  <div className="flex flex-col gap-1.5 animate-fade-in">
+                    <label htmlFor="cu-custom-days" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Número de Días</label>
+                    <input
+                      id="cu-custom-days"
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="Ej. 15"
+                      value={createForm.customDays}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, customDays: e.target.value }))}
+                      className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
+
           <button
             type="submit"
             disabled={isCreating}
@@ -312,13 +441,32 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Users table */}
       <div className="bg-bg-secondary border border-white/10 rounded-2xl overflow-hidden">
         {/* Table header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 gap-4 flex-wrap">
-          <h2 className="text-sm font-bold text-white">
-            Usuarios ({pagination.total})
-          </h2>
+          <div className="flex items-center gap-4 flex-1 min-w-[280px]">
+            <h2 className="text-sm font-bold text-white whitespace-nowrap">
+              Usuarios ({pagination.total})
+            </h2>
+            <div className="relative flex-1 max-w-xs">
+              <input
+                type="text"
+                placeholder="Buscar usuario o email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-accent-red/60 transition-colors"
+              />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
           <div className="flex gap-2">
             {['', 'banned', 'admin'].map((f) => (
               <button
@@ -363,6 +511,7 @@ export default function Admin() {
                   <th className="text-left px-5 py-3 hidden md:table-cell">Email</th>
                   <th className="text-left px-5 py-3 hidden sm:table-cell">Rol</th>
                   <th className="text-left px-5 py-3 hidden lg:table-cell">Registro</th>
+                  <th className="text-left px-5 py-3 hidden md:table-cell">Acceso</th>
                   <th className="text-left px-5 py-3">Estado</th>
                   <th className="text-right px-5 py-3">Acciones</th>
                 </tr>
@@ -390,6 +539,12 @@ export default function Admin() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-slate-500 text-xs hidden lg:table-cell">{formatDate(u.created_at)}</td>
+                    <td className="px-5 py-3 hidden md:table-cell">
+                       {(() => {
+                         const status = getExpirationStatus(u);
+                         return <span className={`text-xs ${status.style}`}>{status.text}</span>;
+                       })()}
+                     </td>
                     <td className="px-5 py-3">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1.5 ${
                         u.is_banned
@@ -415,6 +570,23 @@ export default function Admin() {
                           <span className="w-5 h-5 border-2 border-t-accent-red border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
                         ) : (
                           <>
+                            <button
+                               onClick={() => {
+                                 setEditingUser(u);
+                                 setEditForm({
+                                   username: u.username,
+                                   email: u.email,
+                                   password: '',
+                                   role: u.role,
+                                   expires_at: u.expires_at ? u.expires_at.split('T')[0] : ''
+                                 });
+                                 setEditError('');
+                               }}
+                               title="Editar"
+                               className="text-accent-blue hover:text-cyan-300 text-xs font-bold px-2 py-1 rounded-lg hover:bg-accent-blue/10 transition-all"
+                             >
+                               Editar
+                             </button>
                             {u.is_banned ? (
                               <button
                                 onClick={() => setModal({ type: 'unban', userId: u.id, username: u.username })}
@@ -469,6 +641,176 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm px-4 animate-fade-in">
+          <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <span className="text-accent-red">✏️</span> Editar Usuario: @{editingUser.username}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <p className="text-red-400 text-sm mb-4 p-3 bg-red-500/10 rounded-xl border border-red-500/20">{editError}</p>
+            )}
+
+            <form onSubmit={handleEditUser} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-username" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Username</label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    value={editForm.username}
+                    onChange={(e) => setEditForm(f => ({ ...f, username: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-email" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</label>
+                  <input
+                    id="edit-email"
+                    type="email"
+                    required
+                    value={editForm.email}
+                    onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-role" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rol</label>
+                  <select
+                    id="edit-role"
+                    value={editForm.role}
+                    onChange={(e) => setEditForm(f => ({ ...f, role: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                  >
+                    <option value="user">Usuario</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-password" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contraseña (Opcional)</label>
+                  <input
+                    id="edit-password"
+                    type="password"
+                    placeholder="Dejar en blanco para no cambiar"
+                    value={editForm.password}
+                    onChange={(e) => setEditForm(f => ({ ...f, password: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Expiration Settings (Only for users) */}
+              {editForm.role === 'user' && (
+                <div className="flex flex-col gap-2 p-4 bg-white/3 border border-white/5 rounded-xl">
+                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Duración del Acceso</label>
+                  
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        now.setDate(now.getDate() + 7);
+                        setEditForm(f => ({ ...f, expires_at: now.toISOString().split('T')[0] }));
+                      }}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-all"
+                    >
+                      +7 Días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        now.setDate(now.getDate() + 30);
+                        setEditForm(f => ({ ...f, expires_at: now.toISOString().split('T')[0] }));
+                      }}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-all"
+                    >
+                      +30 Días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, expires_at: '' }))}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-all"
+                    >
+                      Ilimitado
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const now = new Date();
+                        if (val === '2m') now.setMonth(now.getMonth() + 2);
+                        else if (val === '3m') now.setMonth(now.getMonth() + 3);
+                        else if (val === '4m') now.setMonth(now.getMonth() + 4);
+                        else if (val === '6m') now.setMonth(now.getMonth() + 6);
+                        else if (val === '1y') now.setFullYear(now.getFullYear() + 1);
+                        setEditForm(f => ({ ...f, expires_at: now.toISOString().split('T')[0] }));
+                        e.target.value = ''; // Reset select state
+                      }}
+                      className="w-full py-2 px-3 text-xs font-bold rounded-lg bg-white/5 border border-white/10 text-slate-300 focus:outline-none focus:border-accent-red/60 transition-all appearance-none"
+                    >
+                      <option value="" className="bg-bg-secondary text-slate-400">➕ Añadir meses / año...</option>
+                      <option value="2m" className="bg-bg-secondary text-white">+2 Meses</option>
+                      <option value="3m" className="bg-bg-secondary text-white">+3 Meses</option>
+                      <option value="4m" className="bg-bg-secondary text-white">+4 Meses</option>
+                      <option value="6m" className="bg-bg-secondary text-white">+6 Meses</option>
+                      <option value="1y" className="bg-bg-secondary text-white">+1 Año</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="edit-expiry-date" className="text-[10px] font-bold text-slate-400">Fecha de Expiración</label>
+                    <input
+                      id="edit-expiry-date"
+                      type="date"
+                      value={editForm.expires_at}
+                      onChange={(e) => setEditForm(f => ({ ...f, expires_at: e.target.value }))}
+                      className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-accent-red/60 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end mt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-sm transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditing}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent-red to-accent-purple text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-all"
+                >
+                  {isEditing ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

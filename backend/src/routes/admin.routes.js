@@ -53,23 +53,37 @@ router.get(
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const offset = (page - 1) * limit;
     const filter = req.query.filter; // 'banned' | 'admin' | undefined
+    const search = req.query.search;
 
-    let whereClause = "";
-    const params = [limit, offset];
+    let conditions = [];
+    let queryParams = [];
 
     if (filter === "banned") {
-      whereClause = "WHERE is_banned = TRUE";
+      conditions.push("is_banned = TRUE");
     } else if (filter === "admin") {
-      whereClause = "WHERE role = 'admin'";
+      conditions.push("role = 'admin'");
     }
 
-    const countResult = await db.query(`SELECT COUNT(*) AS total FROM users ${whereClause}`);
+    if (search) {
+      queryParams.push(`%${search.trim()}%`);
+      conditions.push(`(username ILIKE $${queryParams.length} OR email ILIKE $${queryParams.length})`);
+    }
+
+    const whereClause = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
+
+    const countResult = await db.query(
+      `SELECT COUNT(*) AS total FROM users ${whereClause}`,
+      queryParams
+    );
+
+    const limitIdx = queryParams.length + 1;
+    const offsetIdx = queryParams.length + 2;
     const usersResult = await db.query(
-      `SELECT id, username, email, role, avatar, is_banned, created_at, last_seen
+      `SELECT id, username, email, role, avatar, is_banned, created_at, last_seen, expires_at
        FROM users ${whereClause}
        ORDER BY created_at DESC
-       LIMIT $1 OFFSET $2`,
-      params
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      [...queryParams, limit, offset]
     );
 
     res.status(200).json({
@@ -91,7 +105,7 @@ router.get(
 router.post(
   "/users",
   asyncHandler(async (req, res) => {
-    const { username, email, password, role = "user" } = req.body;
+    const { username, email, password, role = "user", durationDays } = req.body;
 
     if (!username || !email || !password) {
       throw new ApiError(400, "username, email y password son requeridos");
@@ -102,13 +116,18 @@ router.post(
     }
 
     const hash = await bcrypt.hash(password, 12);
+    let expires_at = null;
+
+    if (role === "user" && durationDays && parseInt(durationDays) > 0) {
+      expires_at = new Date(Date.now() + parseInt(durationDays) * 24 * 60 * 60 * 1000);
+    }
 
     try {
       const result = await db.query(
-        `INSERT INTO users (username, email, password, role)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, username, email, role, avatar, created_at`,
-        [username.trim(), email.toLowerCase().trim(), hash, role]
+        `INSERT INTO users (username, email, password, role, expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, username, email, role, avatar, expires_at, created_at`,
+        [username.trim(), email.toLowerCase().trim(), hash, role, expires_at]
       );
 
       res.status(201).json({ success: true, data: result.rows[0] });
@@ -195,4 +214,71 @@ router.delete(
   })
 );
 
+// ─── PATCH /api/admin/users/:id — Edit user details ──────────────────────────
+router.patch(
+  "/users/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { username, email, password, role, expires_at } = req.body;
+
+    const userCheck = await db.query("SELECT id, role FROM users WHERE id = $1", [id]);
+    if (userCheck.rows.length === 0) {
+      throw new ApiError(404, "Usuario no encontrado");
+    }
+
+    let updates = [];
+    let queryParams = [id];
+    let paramIndex = 2;
+
+    if (username !== undefined) {
+      updates.push(`username = $${paramIndex++}`);
+      queryParams.push(username.trim());
+    }
+    if (email !== undefined) {
+      updates.push(`email = $${paramIndex++}`);
+      queryParams.push(email.toLowerCase().trim());
+    }
+    if (role !== undefined) {
+      updates.push(`role = $${paramIndex++}`);
+      queryParams.push(role);
+    }
+    if (password && password.trim().length > 0) {
+      const hash = await bcrypt.hash(password, 12);
+      updates.push(`password = $${paramIndex++}`);
+      queryParams.push(hash);
+    }
+    if (expires_at !== undefined) {
+      updates.push(`expires_at = $${paramIndex++}`);
+      queryParams.push(expires_at ? new Date(expires_at) : null);
+    }
+
+    if (updates.length === 0) {
+      throw new ApiError(400, "No se enviaron campos para actualizar");
+    }
+
+    const updateQuery = `
+      UPDATE users 
+      SET ${updates.join(", ")} 
+      WHERE id = $1 
+      RETURNING id, username, email, role, avatar, expires_at, is_banned, created_at
+    `;
+
+    try {
+      const result = await db.query(updateQuery, queryParams);
+      res.status(200).json({ success: true, data: result.rows[0], message: "Usuario actualizado con éxito" });
+    } catch (err) {
+      if (err.code === "23505") {
+        if (err.constraint?.includes("email")) {
+          throw new ApiError(409, "El email ya está en uso");
+        }
+        if (err.constraint?.includes("username")) {
+          throw new ApiError(409, "El username ya está en uso");
+        }
+      }
+      throw err;
+    }
+  })
+);
+
 module.exports = router;
+

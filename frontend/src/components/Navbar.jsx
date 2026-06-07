@@ -157,6 +157,26 @@ export const Navbar = () => {
                 <span className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
                   {user?.username}
                 </span>
+                {user?.role !== 'admin' && user?.expires_at && (
+                  (() => {
+                    const expiry = new Date(user.expires_at);
+                    const now = new Date();
+                    const diffTime = expiry - now;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                      return (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none ${
+                          diffDays <= 5
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-accent-blue/20 text-accent-blue border border-accent-blue/30'
+                        }`}>
+                          {diffDays}d
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()
+                )}
                 <svg className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -245,8 +265,30 @@ export const Navbar = () => {
 
           {isAuthenticated && (
             <>
-              <Link to="/perfil" className="px-4 py-3 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2">
-                <span>👤</span> Mi Perfil
+              <Link to="/perfil" className="px-4 py-3 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>👤</span> Mi Perfil
+                </span>
+                {user?.role !== 'admin' && user?.expires_at && (
+                  (() => {
+                    const expiry = new Date(user.expires_at);
+                    const now = new Date();
+                    const diffTime = expiry - now;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                      return (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                          diffDays <= 5
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-accent-blue/20 text-accent-blue border border-accent-blue/30'
+                        }`}>
+                          {diffDays}d restantes
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()
+                )}
               </Link>
               {isAdmin && (
                 <Link to="/admin" className="px-4 py-3 rounded-lg text-base font-medium text-accent-red hover:bg-white/5 transition-all flex items-center gap-2">

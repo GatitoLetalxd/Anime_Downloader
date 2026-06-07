@@ -12,8 +12,12 @@ CREATE TABLE IF NOT EXISTS users (
   is_banned   BOOLEAN      NOT NULL DEFAULT FALSE,
   banned_at   TIMESTAMPTZ,
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  last_seen   TIMESTAMPTZ
+  last_seen   TIMESTAMPTZ,
+  expires_at  TIMESTAMPTZ
 );
+
+-- Apply column migrations to existing databases
+ALTER TABLE users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 
 -- ─── Favorites ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS favorites (

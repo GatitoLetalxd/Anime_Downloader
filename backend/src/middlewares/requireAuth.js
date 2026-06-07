@@ -17,9 +17,9 @@ async function requireAuth(req, _res, next) {
     const token = authHeader.slice(7);
     const decoded = verifyAccessToken(token);
 
-    // Fetch fresh user data (checks is_banned in real time)
+    // Fetch fresh user data (checks is_banned & expires_at in real time)
     const result = await db.query(
-      "SELECT id, username, email, role, avatar, is_banned FROM users WHERE id = $1",
+      "SELECT id, username, email, role, avatar, is_banned, expires_at FROM users WHERE id = $1",
       [decoded.id]
     );
 
@@ -31,6 +31,10 @@ async function requireAuth(req, _res, next) {
 
     if (user.is_banned) {
       return next(new ApiError(403, "Tu cuenta está suspendida. Contacta al administrador."));
+    }
+
+    if (user.role !== "admin" && user.expires_at && new Date(user.expires_at) < new Date()) {
+      return next(new ApiError(403, "Tu acceso ha expirado. Por favor, comunícate con el administrador."));
     }
 
     req.user = user;

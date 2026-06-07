@@ -195,6 +195,71 @@ export default function Perfil() {
         </div>
       </div>
 
+      {/* Subscription / Time Remaining card */}
+      <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <span className="text-accent-blue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </span>
+            Estado de Acceso
+          </h2>
+          <p className="text-slate-400 text-sm mt-1">
+            {user?.role === 'admin'
+              ? 'Tu cuenta es de administrador y tiene acceso ilimitado a todas las funciones.'
+              : !user?.expires_at
+              ? 'Tienes una suscripción activa con acceso ilimitado.'
+              : `Tu acceso temporal está programado para finalizar el ${new Date(user.expires_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}.`}
+          </p>
+        </div>
+
+        <div className="flex-shrink-0">
+          {(() => {
+            if (user?.role === 'admin' || !user?.expires_at) {
+              return (
+                <span className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide">
+                  Acceso Ilimitado
+                </span>
+              );
+            }
+
+            const expiry = new Date(user.expires_at);
+            const now = new Date();
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 0) {
+              return (
+                <span className="px-4 py-2 rounded-xl text-xs font-black bg-red-500/20 text-red-400 border border-red-500/30 uppercase tracking-wide">
+                  Expirado
+                </span>
+              );
+            }
+
+            if (diffDays === 1) {
+              return (
+                <span className="px-4 py-2 rounded-xl text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wide animate-pulse">
+                  Expira Mañana
+                </span>
+              );
+            }
+
+            return (
+              <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide border ${
+                diffDays <= 5
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                  : 'bg-accent-blue/20 text-accent-blue border-accent-blue/30'
+              }`}>
+                {diffDays} Días Restantes
+              </span>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* Avatar selector */}
       <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 mb-6">
         <h2 className="text-base font-bold text-white mb-4">Elegir Avatar</h2>
