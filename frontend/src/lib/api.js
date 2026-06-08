@@ -4,7 +4,7 @@ let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
   API_URL = API_URL.replace('localhost', window.location.hostname);
 }
-const API_KEY = import.meta.env.VITE_API_KEY || 'mi_clave_local_123';
+const API_KEY = import.meta.env.VITE_API_KEY || 'luniel_api_secure_key_2026_9b8c7d6e5a4f3c2b';
 
 const client = axios.create({
   baseURL: API_URL,

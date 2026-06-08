@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { getAllLocalDownloads, deleteLocalDownload } from '../lib/db';
 
 const SocketContext = createContext(null);
 
@@ -9,6 +10,20 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
+    const loadDownloads = async () => {
+      try {
+        const dbDownloads = await getAllLocalDownloads();
+        const initial = {};
+        dbDownloads.forEach((d) => {
+          initial[d.downloadId] = d;
+        });
+        setDescargas((prev) => ({ ...initial, ...prev }));
+      } catch (e) {
+        console.error('Error loading downloads from IndexedDB', e);
+      }
+    };
+    loadDownloads();
+
     let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
       API_URL = API_URL.replace('localhost', window.location.hostname);
@@ -146,8 +161,10 @@ export const SocketProvider = ({ children }) => {
     setDescargas((prev) => {
       const active = {};
       Object.entries(prev).forEach(([id, item]) => {
-        if (item.status !== 'completed' && item.status !== 'failed') {
+        if (item.status !== 'completed' && item.status !== 'failed' && item.status !== 'moved_or_deleted') {
           active[id] = item;
+        } else {
+          deleteLocalDownload(id).catch((err) => console.error('Error deleting local download:', err));
         }
       });
       return active;

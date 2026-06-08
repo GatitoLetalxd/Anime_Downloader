@@ -45,7 +45,9 @@ export default function Favoritos() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <span className="text-3xl text-accent-red font-bold">♥</span>
+        <svg className="w-8 h-8 text-accent-red fill-current" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
         <div>
           <h1 className="text-2xl font-bold text-white font-heading">Mis Favoritos</h1>
           <p className="text-slate-400 text-sm">
@@ -64,10 +66,12 @@ export default function Favoritos() {
       {/* Empty state */}
       {!isLoading && favorites.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
-          <span className="text-6xl opacity-30">💔</span>
+          <svg className="w-16 h-16 text-slate-500 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
           <h2 className="text-xl font-bold text-slate-300">Sin favoritos aún</h2>
           <p className="text-slate-500 text-sm max-w-xs">
-            Agrega animes a favoritos desde el modal de detalles haciendo clic en ♥
+            Agrega animes a favoritos desde el modal de detalles haciendo clic en el botón de favoritos
           </p>
         </div>
       )}

@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useDescargas from '../hooks/useDescargas';
 import BarraProgreso from '../components/BarraProgreso';
 
 export const Descargas = () => {
   const { descargas, cancelarDescarga, limpiarCompletadas, agregarDescarga } = useDescargas();
   const [activeTab, setActiveTab] = useState('en-curso');
+  const [fileStatuses, setFileStatuses] = useState({});
 
   const items = Object.values(descargas);
 
@@ -28,7 +29,9 @@ export const Descargas = () => {
     let total = 0;
     enCurso.forEach((d) => {
       if (d.status === 'downloading' && d.speed) {
-        const match = d.speed.match(/[\d.]+/);
+        total += d.speed;
+      } else if (d.status === 'downloading' && d.speedText) {
+        const match = d.speedText.match(/[\d.]+/);
         if (match) {
           total += parseFloat(match[0]);
         }
@@ -37,8 +40,76 @@ export const Descargas = () => {
     return total > 0 ? `${total.toFixed(2)} MB/s` : '0.00 MB/s';
   }, [enCurso]);
 
+  // Verify local file handles
+  useEffect(() => {
+    const verifyFiles = async () => {
+      const statuses = {};
+      for (const d of completadas) {
+        if (d.handle) {
+          try {
+            const perm = await d.handle.queryPermission({ mode: 'read' });
+            if (perm === 'granted') {
+              await d.handle.getFile();
+              statuses[d.downloadId] = 'available';
+            } else {
+              statuses[d.downloadId] = 'needs_permission';
+            }
+          } catch (err) {
+            if (err.name === 'NotFoundError') {
+              statuses[d.downloadId] = 'moved_or_deleted';
+            } else {
+              statuses[d.downloadId] = 'needs_permission';
+            }
+          }
+        } else {
+          statuses[d.downloadId] = 'native';
+        }
+      }
+      setFileStatuses(statuses);
+    };
+
+    if (completadas.length > 0) {
+      verifyFiles();
+    }
+  }, [completadas]);
+
+  const handleRequestPermission = async (d) => {
+    if (!d.handle) return;
+    try {
+      const perm = await d.handle.requestPermission({ mode: 'read' });
+      if (perm === 'granted') {
+        await d.handle.getFile();
+        setFileStatuses((prev) => ({ ...prev, [d.downloadId]: 'available' }));
+      } else {
+        setFileStatuses((prev) => ({ ...prev, [d.downloadId]: 'needs_permission' }));
+      }
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        setFileStatuses((prev) => ({ ...prev, [d.downloadId]: 'moved_or_deleted' }));
+        alert('El archivo no se encontró. Posiblemente fue movido o eliminado de su ubicación original.');
+      } else {
+        alert(`Error al acceder al archivo: ${err.message}`);
+      }
+    }
+  };
+
+  const handlePlayLocal = async (d) => {
+    if (!d.handle) return;
+    try {
+      const file = await d.handle.getFile();
+      const blobUrl = URL.createObjectURL(file);
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        setFileStatuses((prev) => ({ ...prev, [d.downloadId]: 'moved_or_deleted' }));
+        alert('El archivo fue movido o eliminado.');
+      } else {
+        alert(`No se pudo reproducir: ${err.message}`);
+      }
+    }
+  };
+
   const handleRetry = async (d) => {
-    // Retry download by starting it again
     cancelarDescarga(d.downloadId);
     await agregarDescarga(d.url, d.title);
   };
@@ -56,7 +127,7 @@ export const Descargas = () => {
         <div>
           <h2 className="text-2xl font-extrabold text-white">Administrador de Descargas</h2>
           <p className="text-xs text-slate-400 font-medium">
-            Monitorea el progreso de tus descargas locales en tiempo real
+            Monitorea el progreso de tus descargas locales directas a tu equipo
           </p>
         </div>
 
@@ -138,41 +209,82 @@ export const Descargas = () => {
                 >
                   <div className="space-y-1 flex-1 min-w-0">
                     <h4 className="text-sm font-bold text-white line-clamp-1">{d.title}</h4>
-                    <p className="text-xs text-slate-400 font-semibold flex items-center space-x-3">
-                      <span>Tamaño: {d.size || d.fileSize || 'Desconocido'}</span>
-                      <span className="text-slate-600">•</span>
-                      <span>Completado a las: {new Date(d.completedAt || d.updatedAt).toLocaleTimeString()}</span>
-                    </p>
-                    {d.filePath && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-xs text-slate-400 font-semibold">
+                        <span>Tamaño: {d.size || 'Desconocido'}</span>
+                        <span className="text-slate-600 mx-2">•</span>
+                        <span>Completado: {new Date(d.completedAt || Date.now()).toLocaleTimeString()}</span>
+                      </p>
+                      {/* Status badges */}
+                      {fileStatuses[d.downloadId] === 'available' && (
+                        <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">
+                          <svg className="w-3 h-3 mr-1 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Disponible
+                        </span>
+                      )}
+                      {fileStatuses[d.downloadId] === 'moved_or_deleted' && (
+                        <span className="inline-flex items-center text-[10px] font-bold text-rose-400 bg-rose-500/5 px-2 py-0.5 rounded border border-rose-500/10">
+                          <svg className="w-3 h-3 mr-1 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Archivo movido o eliminado
+                        </span>
+                      )}
+                      {fileStatuses[d.downloadId] === 'needs_permission' && (
+                        <button
+                          onClick={() => handleRequestPermission(d)}
+                          className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10 transition-all"
+                        >
+                          <svg className="w-3 h-3 mr-1 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Clic para verificar archivo
+                        </button>
+                      )}
+                      {fileStatuses[d.downloadId] === 'native' && (
+                        <span className="inline-flex items-center text-[10px] font-bold text-blue-400 bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+                          <svg className="w-3 h-3 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Descargado en Navegador
+                        </span>
+                      )}
+                    </div>
+                    {d.fileName && (
                       <p className="text-[10px] text-slate-500 font-mono line-clamp-1 break-all bg-bg-primary/50 px-2 py-1 rounded border border-white/5">
-                        Ruta: {d.filePath}
+                        Nombre: {d.fileName}
                       </p>
                     )}
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto gap-2 flex-shrink-0 mt-3 sm:mt-0">
-                    {/* Simulated directory open button */}
-                    <button
-                      onClick={() => alert(`Las descargas se guardan en el directorio del servidor: ${d.filePath || 'backend/downloads'}`)}
-                      className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/5 flex items-center space-x-2"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                      </svg>
-                      <span>Abrir carpeta</span>
-                    </button>
+                    {d.handle && fileStatuses[d.downloadId] !== 'moved_or_deleted' && (
+                      <button
+                        onClick={() => handlePlayLocal(d)}
+                        disabled={fileStatuses[d.downloadId] === 'needs_permission'}
+                        className={`px-4 py-2 w-full sm:w-auto flex items-center justify-center rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-bold transition-all shadow-md space-x-2 ${fileStatuses[d.downloadId] === 'needs_permission' ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Reproducir</span>
+                      </button>
+                    )}
 
-                    <a
-                      href={d.downloadUrl || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`px-4 py-2 w-full sm:w-auto flex items-center justify-center rounded-xl bg-accent-purple hover:bg-accent-purple/90 text-white text-xs font-bold transition-all shadow-md space-x-2 ${!d.downloadUrl && 'pointer-events-none opacity-50'}`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      <span>Descargar archivo</span>
-                    </a>
+                    {fileStatuses[d.downloadId] === 'needs_permission' && (
+                      <button
+                        onClick={() => handleRequestPermission(d)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span>Verificar archivo</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

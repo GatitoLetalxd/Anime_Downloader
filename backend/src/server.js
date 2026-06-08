@@ -90,3 +90,5 @@ server.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`Anime1v API listening on http://localhost:${port}`);
 });
+
+// Trigger reload for new API Keys configuration

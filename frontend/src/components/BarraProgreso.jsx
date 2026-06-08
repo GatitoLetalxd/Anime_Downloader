@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const BarraProgreso = ({ descarga, onCancel }) => {
-  const { title, progress, speed, size, status, error } = descarga;
+  const { title, progress, speed, speedText, size, status, error } = descarga;
 
   // Visual styling helpers
   const getStatusColor = () => {
@@ -102,9 +102,9 @@ export const BarraProgreso = ({ descarga, onCancel }) => {
         </div>
 
         <div>
-          {status === 'downloading' && speed && (
+          {status === 'downloading' && (speed || speedText) && (
             <span className="text-accent-blue font-bold px-2 py-0.5 rounded-md bg-accent-blue/10 border border-accent-blue/10">
-              {speed}
+              {speed || speedText}
             </span>
           )}
           {status === 'completed' && (

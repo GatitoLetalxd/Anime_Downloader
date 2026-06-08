@@ -1235,6 +1235,34 @@ async function runDownload(record, payload) {
   }
 }
 
+async function resolveEpisodeDirectUrl(episodeUrl, variant, preferredServer) {
+  const episodeResponse = await animeService.getEpisodeLinks(episodeUrl, "true");
+  const candidates = chooseCandidateLinks(episodeResponse.data, variant, preferredServer);
+
+  if (candidates.length === 0) {
+    throw new Error("No se encontraron enlaces para este episodio");
+  }
+
+  const errors = [];
+  for (const candidate of candidates) {
+    try {
+      let finalUrl = resolveDirectDownloadUrl(candidate.url, candidate.server);
+      finalUrl = await resolveEmbedUrl(finalUrl, { url: episodeUrl, quality: "1080p", downloadId: "temp" }, candidate);
+      if (finalUrl) {
+        return {
+          directUrl: finalUrl,
+          server: candidate.server,
+          isHls: finalUrl.toLowerCase().includes(".m3u8") || /hls/i.test(candidate.server),
+          referer: getRefererForUrl(candidate.url || episodeUrl || finalUrl),
+        };
+      }
+    } catch (error) {
+      errors.push(`${candidate.server}: ${error.message}`);
+    }
+  }
+  throw new Error(`No se pudo resolver ningún servidor para este episodio: ${errors.join(" | ")}`);
+}
+
 function createDownload(payload, baseUrl) {
   if (!payload || typeof payload.url !== "string" || !payload.url.trim()) {
     throw new ApiError(400, "Se requiere el parametro url en el body");
@@ -1405,4 +1433,9 @@ module.exports = {
   createBatch,
   getBatch,
   getDownloadsDir,
+  resolveEpisodeDirectUrl,
+  extractAnimeSlug,
+  extractEpisodeNumber,
+  getExtensionFromUrl,
+  getRefererForUrl,
 };

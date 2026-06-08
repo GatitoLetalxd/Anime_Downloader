@@ -1,5 +1,8 @@
 const express = require("express");
 const axios = require("axios");
+const ffmpegPath = require("ffmpeg-static");
+const ffmpeg = require("fluent-ffmpeg");
+ffmpeg.setFfmpegPath(ffmpegPath);
 const { requireApiKey } = require("../middlewares/auth");
 const { dailyRateLimit } = require("../middlewares/rate-limit");
 const animeService = require("../services/anime.service");
@@ -159,6 +162,64 @@ router.get(
       success: true,
       data,
     });
+  })
+);
+
+router.get(
+  "/stream-download",
+  asyncHandler(async (req, res) => {
+    if (!req.query.url) {
+      throw new ApiError(400, "Se requiere el parametro url");
+    }
+
+    const { directUrl, server, isHls, referer: resolvedReferer } = await downloadService.resolveEpisodeDirectUrl(
+      req.query.url,
+      req.query.variant || "SUB",
+      req.query.server
+    );
+
+    const slug = downloadService.extractAnimeSlug(req.query.url);
+    const epNum = downloadService.extractEpisodeNumber(req.query.url);
+    const ext = isHls ? ".mp4" : downloadService.getExtensionFromUrl(directUrl);
+    const filename = `${slug}-ep${epNum || "x"}-${server.toLowerCase()}${ext}`;
+
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", isHls ? "video/mp4" : "video/octet-stream");
+
+    const finalReferer = resolvedReferer || downloadService.getRefererForUrl(directUrl);
+
+    if (isHls) {
+      ffmpeg(directUrl)
+        .inputOptions([
+          '-headers',
+          `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${finalReferer}\r\n`
+        ])
+        .outputOptions([
+          "-c copy",
+          "-bsf:a aac_adtstoasc",
+          "-movflags frag_keyframe+empty_moov"
+        ])
+        .toFormat("mp4")
+        .on("error", (err) => {
+          console.error("FFmpeg stream-download error:", err.message);
+        })
+        .pipe(res, { end: true });
+    } else {
+      const response = await axios.get(directUrl, {
+        responseType: "stream",
+        timeout: 120000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          Referer: finalReferer,
+        },
+      });
+
+      if (response.headers["content-length"]) {
+        res.setHeader("Content-Length", response.headers["content-length"]);
+      }
+
+      response.data.pipe(res);
+    }
   })
 );
 

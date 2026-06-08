@@ -1,14 +1,66 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getAllLocalDownloads, deleteLocalDownload } from '../lib/db';
 
 export const Historial = () => {
   const [historial, setHistorial] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [fileStatuses, setFileStatuses] = useState({});
 
-  // Load history from localStorage
-  const loadHistory = () => {
+  // Load combined history from IndexedDB and localStorage (legacy)
+  const loadHistory = async () => {
     try {
-      const raw = localStorage.getItem('anime-downloader-historial') || '[]';
-      setHistorial(JSON.parse(raw));
+      // 1. Load from IndexedDB
+      let dbDownloads = [];
+      try {
+        dbDownloads = await getAllLocalDownloads();
+      } catch (e) {
+        console.error('Error reading from IndexedDB:', e);
+      }
+
+      // 2. Load from localStorage (legacy support)
+      let lsDownloads = [];
+      try {
+        const raw = localStorage.getItem('anime-downloader-historial') || '[]';
+        lsDownloads = JSON.parse(raw);
+      } catch (e) {
+        console.error('Error reading from localStorage:', e);
+      }
+
+      // 3. Merge them, prioritizing IndexedDB entries (which contain file handles)
+      const mergedMap = new Map();
+
+      lsDownloads.forEach((item) => {
+        if (item && item.downloadId) {
+          mergedMap.set(item.downloadId, {
+            ...item,
+            status: item.status || 'completed',
+          });
+        }
+      });
+
+      dbDownloads.forEach((item) => {
+        if (item && item.downloadId) {
+          const existing = mergedMap.get(item.downloadId) || {};
+          mergedMap.set(item.downloadId, {
+            ...existing,
+            ...item,
+          });
+        }
+      });
+
+      // Filter to display only completed or legacy completed items
+      const mergedList = Array.from(mergedMap.values()).filter(
+        (item) => item.status === 'completed' || !item.status
+      );
+
+      // Sort by completed date descending
+      mergedList.sort((a, b) => {
+        const dateA = a.completedAt || a.createdAt || 0;
+        const dateB = b.completedAt || b.createdAt || 0;
+        return dateB - dateA;
+      });
+
+      setHistorial(mergedList);
     } catch (e) {
       console.error('Error loading history:', e);
     }
@@ -17,22 +69,126 @@ export const Historial = () => {
   useEffect(() => {
     loadHistory();
 
-    // Listen for storage events (e.g. from useSocket in other pages)
+    // Listen for storage events (e.g. from legacy updates in other windows)
     window.addEventListener('storage', loadHistory);
     return () => window.removeEventListener('storage', loadHistory);
   }, []);
 
-  const handleClearHistory = () => {
-    if (window.confirm('¿Estás seguro de que deseas borrar todo el historial?')) {
-      localStorage.setItem('anime-downloader-historial', '[]');
-      setHistorial([]);
+  // Verify local file handles
+  useEffect(() => {
+    const verifyFiles = async () => {
+      const statuses = {};
+      for (const d of historial) {
+        if (d.handle) {
+          try {
+            const perm = await d.handle.queryPermission({ mode: 'read' });
+            if (perm === 'granted') {
+              await d.handle.getFile();
+              statuses[d.downloadId] = 'available';
+            } else {
+              statuses[d.downloadId] = 'needs_permission';
+            }
+          } catch (err) {
+            if (err.name === 'NotFoundError') {
+              statuses[d.downloadId] = 'moved_or_deleted';
+            } else {
+              statuses[d.downloadId] = 'needs_permission';
+            }
+          }
+        } else {
+          statuses[d.downloadId] = 'native';
+        }
+      }
+      setFileStatuses(statuses);
+    };
+
+    if (historial.length > 0) {
+      verifyFiles();
+    }
+  }, [historial]);
+
+  const handleRequestPermission = async (item) => {
+    if (!item.handle) return;
+    try {
+      const perm = await item.handle.requestPermission({ mode: 'read' });
+      if (perm === 'granted') {
+        await item.handle.getFile();
+        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'available' }));
+      } else {
+        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'needs_permission' }));
+      }
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'moved_or_deleted' }));
+        alert('El archivo no se encontró. Posiblemente fue movido o eliminado de su ubicación original.');
+      } else {
+        alert(`Error al acceder al archivo: ${err.message}`);
+      }
     }
   };
 
-  const handleRemoveItem = (downloadId) => {
-    const next = historial.filter((item) => item.downloadId !== downloadId);
-    localStorage.setItem('anime-downloader-historial', JSON.stringify(next));
-    setHistorial(next);
+  const handlePlayLocal = async (item) => {
+    if (!item.handle) return;
+    try {
+      const file = await item.handle.getFile();
+      const blobUrl = URL.createObjectURL(file);
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'moved_or_deleted' }));
+        alert('El archivo fue movido o eliminado.');
+      } else {
+        alert(`No se pudo reproducir: ${err.message}`);
+      }
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (window.confirm('¿Estás seguro de que deseas borrar todo el historial?')) {
+      // Clear localStorage
+      localStorage.setItem('anime-downloader-historial', '[]');
+
+      // Clear IndexedDB records
+      try {
+        const localItems = await getAllLocalDownloads();
+        for (const item of localItems) {
+          if (item.status === 'completed') {
+            await deleteLocalDownload(item.downloadId);
+          }
+        }
+      } catch (err) {
+        console.error('Error clearing local downloads from IndexedDB:', err);
+      }
+
+      setHistorial([]);
+      setFileStatuses({});
+    }
+  };
+
+  const handleRemoveItem = async (downloadId) => {
+    // Remove from localStorage
+    try {
+      const raw = localStorage.getItem('anime-downloader-historial') || '[]';
+      const parsed = JSON.parse(raw);
+      const next = parsed.filter((item) => item.downloadId !== downloadId);
+      localStorage.setItem('anime-downloader-historial', JSON.stringify(next));
+    } catch (e) {
+      console.error('Error updating localStorage:', e);
+    }
+
+    // Remove from IndexedDB
+    try {
+      await deleteLocalDownload(downloadId);
+    } catch (e) {
+      console.error('Error deleting from IndexedDB:', e);
+    }
+
+    setHistorial((prev) => prev.filter((item) => item.downloadId !== downloadId));
+    setFileStatuses((prev) => {
+      const next = { ...prev };
+      delete next[downloadId];
+      return next;
+    });
   };
 
   // Filter history
@@ -64,7 +220,6 @@ export const Historial = () => {
         } else if (sizeStr.includes('KB')) {
           bytes = num * 1024;
         } else {
-          // Assume bytes or fallback
           bytes = num;
         }
       }
@@ -170,20 +325,83 @@ export const Historial = () => {
                 <p className="text-xs text-slate-400 font-semibold flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Tamaño: {item.size || 'Desconocido'}</span>
                   <span className="text-slate-600 hidden sm:inline">•</span>
-                  <span>Descargado el: {new Date(item.completedAt).toLocaleDateString()} a las {new Date(item.completedAt).toLocaleTimeString()}</span>
+                  <span>Descargado el: {new Date(item.completedAt || Date.now()).toLocaleDateString()} a las {new Date(item.completedAt || Date.now()).toLocaleTimeString()}</span>
+                  
+                  {/* Status badges without emojis */}
+                  {fileStatuses[item.downloadId] === 'available' && (
+                    <span className="inline-flex items-center text-[10px] font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">
+                      <svg className="w-3 h-3 mr-1 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Disponible
+                    </span>
+                  )}
+                  {fileStatuses[item.downloadId] === 'moved_or_deleted' && (
+                    <span className="inline-flex items-center text-[10px] font-bold text-rose-400 bg-rose-500/5 px-2 py-0.5 rounded border border-rose-500/10">
+                      <svg className="w-3 h-3 mr-1 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      Archivo movido o eliminado
+                    </span>
+                  )}
+                  {fileStatuses[item.downloadId] === 'needs_permission' && (
+                    <button
+                      onClick={() => handleRequestPermission(item)}
+                      className="inline-flex items-center text-[10px] font-bold text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10 transition-all"
+                    >
+                      <svg className="w-3 h-3 mr-1 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Clic para verificar archivo
+                    </button>
+                  )}
+                  {fileStatuses[item.downloadId] === 'native' && (
+                    <span className="inline-flex items-center text-[10px] font-bold text-blue-400 bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+                      <svg className="w-3 h-3 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Descargado en Navegador
+                    </span>
+                  )}
                 </p>
-                {item.filePath && (
+                {item.fileName && (
                   <p className="text-[10px] text-slate-500 font-mono line-clamp-1 break-all bg-bg-primary/50 px-2 py-1 rounded border border-white/5">
-                    Archivo: {item.fileName} ({item.filePath})
+                    Archivo: {item.fileName}
                   </p>
                 )}
               </div>
 
-              <div className="flex items-center justify-end w-full sm:w-auto mt-3 sm:mt-0 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto gap-2 flex-shrink-0 mt-3 sm:mt-0">
+                {item.handle && fileStatuses[item.downloadId] !== 'moved_or_deleted' && (
+                  <button
+                    onClick={() => handlePlayLocal(item)}
+                    disabled={fileStatuses[item.downloadId] === 'needs_permission'}
+                    className={`px-4 py-2 w-full sm:w-auto flex items-center justify-center rounded-xl bg-accent-blue hover:bg-accent-blue/90 text-white text-xs font-bold transition-all shadow-md space-x-2 ${fileStatuses[item.downloadId] === 'needs_permission' ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Reproducir</span>
+                  </button>
+                )}
+
+                {fileStatuses[item.downloadId] === 'needs_permission' && (
+                  <button
+                    onClick={() => handleRequestPermission(item)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span>Verificar archivo</span>
+                  </button>
+                )}
+
                 {/* Delete from history button */}
                 <button
                   onClick={() => handleRemoveItem(item.downloadId)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 border border-white/5 text-slate-400 transition-colors duration-200"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 border border-white/5 text-slate-400 transition-colors duration-200 mx-auto sm:mx-0"
                   title="Eliminar del historial"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
