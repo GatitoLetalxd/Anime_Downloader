@@ -13,7 +13,8 @@ pnpm-debug.log*
 .env.production.local
 backend/.env
 frontend/.env
-
+/backend/.env
+/frontend/.env
 # Salidas de Compilación y Producción
 /frontend/dist/
 /frontend/build/
