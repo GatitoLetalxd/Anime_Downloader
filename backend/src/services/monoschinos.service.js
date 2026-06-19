@@ -2,6 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const { URL } = require("node:url");
 const { ApiError } = require("../utils/api-error");
+const MemoryCache = require("../utils/cache");
 
 const DEFAULT_DOMAIN = "monoschinos2.com";
 
@@ -66,6 +67,10 @@ async function searchAnime(query, domainCandidate) {
   }
 
   const domain = (domainCandidate || DEFAULT_DOMAIN).toString().trim();
+  const cacheKey = `mono:search:${cleanQuery}:${domain}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
+
   const searchUrl = `https://${domain}/buscar?q=${encodeURIComponent(cleanQuery)}`;
   const html = await fetchHtml(searchUrl);
 
@@ -98,16 +103,22 @@ async function searchAnime(query, domainCandidate) {
     });
   });
 
-  return {
+  const result = {
     success: true,
     data: { query: cleanQuery, results, count: results.length },
     source: "monoschinos",
   };
+  MemoryCache.set(cacheKey, result, 3 * 60 * 1000); // 3 minutes TTL
+  return result;
 }
 
 async function getAnimeInfo(urlCandidate) {
   const slug = slugFromUrl(urlCandidate);
   if (!slug) throw new ApiError(400, "URL invalida");
+
+  const cacheKey = `mono:info:${urlCandidate}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
 
   const domain = new URL(urlCandidate).host || DEFAULT_DOMAIN;
   const animeUrl = `https://${domain}/anime/${slug}`;
@@ -192,7 +203,7 @@ async function getAnimeInfo(urlCandidate) {
     })
     .sort((a, b) => a.number - b.number);
 
-  return {
+  const result = {
     success: true,
     data: {
       id: null,
@@ -216,6 +227,8 @@ async function getAnimeInfo(urlCandidate) {
     },
     source: "monoschinos",
   };
+  MemoryCache.set(cacheKey, result, 10 * 60 * 1000); // 10 minutes TTL
+  return result;
 }
 
 async function getEpisodeLinks(urlCandidate, includeMega = false, excludeServers = []) {
@@ -225,6 +238,14 @@ async function getEpisodeLinks(urlCandidate, includeMega = false, excludeServers
   if (!slug || !episodeNumber) {
     throw new ApiError(400, "URL invalida - no se pudo extraer slug y numero");
   }
+
+  const cleanExclude = Array.isArray(excludeServers)
+    ? excludeServers.join(",")
+    : String(excludeServers || "");
+
+  const cacheKey = `mono:episode:${urlCandidate}:${includeMega}:${cleanExclude}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
 
   const html = await fetchHtml(urlCandidate);
   const $ = cheerio.load(html);
@@ -255,7 +276,7 @@ async function getEpisodeLinks(urlCandidate, includeMega = false, excludeServers
 
   const episodeTitle = $("h1").first().text().trim() || `Episodio ${episodeNumber}`;
 
-  return {
+  const result = {
     success: true,
     data: {
       id: null,
@@ -282,6 +303,8 @@ async function getEpisodeLinks(urlCandidate, includeMega = false, excludeServers
     },
     source: "monoschinos",
   };
+  MemoryCache.set(cacheKey, result, 10 * 60 * 1000); // 10 minutes TTL
+  return result;
 }
 
 module.exports = {

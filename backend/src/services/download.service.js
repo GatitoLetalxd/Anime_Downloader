@@ -18,9 +18,10 @@ async function getPuppeteerBrowser() {
 
 async function resolveEmbedWithPuppeteer(url, referer) {
   debugLog("Puppeteer", "Resolving URL", url);
+  let page = null;
   try {
     const browser = await getPuppeteerBrowser();
-    const page = await browser.newPage();
+    page = await browser.newPage();
     
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -65,11 +66,13 @@ async function resolveEmbedWithPuppeteer(url, referer) {
     if (interceptedUrl) {
       debugLog("Puppeteer", "Intercepted media URL", interceptedUrl);
       await page.close();
+      page = null;
       return interceptedUrl;
     }
     
     const html = await page.content();
     await page.close();
+    page = null;
     
     debugLog("Puppeteer", "Fetched HTML length", html.length);
     
@@ -113,6 +116,11 @@ async function resolveEmbedWithPuppeteer(url, referer) {
     return null;
   } catch (err) {
     debugLog("Puppeteer", "Error", err.message);
+    if (page) {
+      try {
+        await page.close();
+      } catch (_e) {}
+    }
     return null;
   }
 }

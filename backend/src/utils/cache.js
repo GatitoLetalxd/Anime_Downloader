@@ -1,6 +1,20 @@
 class MemoryCache {
   constructor() {
     this.cache = new Map();
+    // Periodically clean up expired entries every 5 minutes
+    const interval = setInterval(() => this.prune(), 5 * 60 * 1000);
+    if (interval && typeof interval.unref === 'function') {
+      interval.unref();
+    }
+  }
+
+  prune() {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiry) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   get(key) {

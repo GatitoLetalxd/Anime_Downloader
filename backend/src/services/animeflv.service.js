@@ -14,33 +14,35 @@ async function getPuppeteerBrowser() {
 async function fetchHtmlWithPuppeteer(url) {
   const browser = await getPuppeteerBrowser();
   const page = await browser.newPage();
-  
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-  );
-  
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
-  
-  // Wait for protection to resolve
-  let retries = 0;
-  while (retries < 10) {
-    const content = await page.content();
-    const $ = cheerio.load(content);
-    const title = $("title").text();
-    const bodyText = $("body").text().trim();
+  try {
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    );
     
-    // If we have actual content (not just protection), break
-    if (title && !title.includes("animeflv") && !title.includes("Checking")) break;
-    if (bodyText.length > 500) break;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
     
-    await new Promise(r => setTimeout(r, 2000));
-    retries++;
+    // Wait for protection to resolve
+    let retries = 0;
+    while (retries < 10) {
+      const content = await page.content();
+      const $ = cheerio.load(content);
+      const title = $("title").text();
+      const bodyText = $("body").text().trim();
+      
+      // If we have actual content (not just protection), break
+      if (title && !title.includes("animeflv") && !title.includes("Checking")) break;
+      if (bodyText.length > 500) break;
+      
+      await new Promise(r => setTimeout(r, 2000));
+      retries++;
+    }
+    
+    return await page.content();
+  } finally {
+    try {
+      await page.close();
+    } catch (_e) {}
   }
-  
-  const content = await page.content();
-  await page.close();
-  
-  return content;
 }
 
 const DEFAULT_DOMAIN = "animeflv.net";

@@ -9,7 +9,9 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 // Dynamically import avatars
 const avatarModules = import.meta.glob('../assets/avatars/*.png', { eager: true });
 function getAvatarSrc(name) {
-  const key = Object.keys(avatarModules).find((k) => k.endsWith(`/${name}`));
+  if (!name) return null;
+  const cleanName = name.replace(/^avatar_?0*(\d+)/, (match, p1) => `avatar${p1}`);
+  const key = Object.keys(avatarModules).find((k) => k.endsWith(`/${cleanName}`));
   return key ? avatarModules[key].default : null;
 }
 

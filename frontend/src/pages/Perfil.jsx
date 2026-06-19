@@ -78,7 +78,7 @@ function PasswordInput({ id, label, value, onChange, placeholder }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Perfil() {
   const { user, authFetch, refreshSession } = useAuth();
-  const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || 'avatar_01.png');
+  const [selectedAvatar, setSelectedAvatar] = useState('avatar1.png');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -90,7 +90,10 @@ export default function Perfil() {
   const [pwdMessage, setPwdMessage] = useState({ text: '', type: '' }); // type: 'success' | 'error'
 
   useEffect(() => {
-    if (user?.avatar) setSelectedAvatar(user.avatar);
+    if (user?.avatar) {
+      const clean = user.avatar.replace(/^avatar_?0*(\d+)/, (match, p1) => `avatar${p1}`);
+      setSelectedAvatar(clean);
+    }
   }, [user?.avatar]);
 
   const handleSaveAvatar = async () => {
@@ -152,7 +155,9 @@ export default function Perfil() {
   };
 
   const getAvatarSrc = (name) => {
-    const found = AVATARS.find((a) => a.name === name);
+    if (!name) return null;
+    const cleanName = name.replace(/^avatar_?0*(\d+)/, (match, p1) => `avatar${p1}`);
+    const found = AVATARS.find((a) => a.name === cleanName);
     return found?.src || null;
   };
 

@@ -670,6 +670,10 @@ async function getEpisodeLinks(urlCandidate, includeMegaRaw, excludeServersRaw) 
   const includeMega = String(includeMegaRaw).toLowerCase() === "true";
   const excludedTokens = buildExcludedTokens(includeMega, excludeServersRaw);
 
+  const cacheKey = `jka:episode:${normalizedUrl}:${includeMega}:${excludeServersRaw || ''}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
+
   const html = await fetchHtml(normalizedUrl);
   const title = cheerio.load(html)("h1").first().text().trim() || null;
 
@@ -719,7 +723,7 @@ async function getEpisodeLinks(urlCandidate, includeMegaRaw, excludeServersRaw) 
   const filteredDownloadSub = filterLinksByServers(downloadLinks.SUB, excludedTokens);
   const filteredDownloadDub = filterLinksByServers(downloadLinks.DUB, excludedTokens);
 
-  return {
+  const result = {
     success: true,
     data: {
       id: null,
@@ -746,6 +750,8 @@ async function getEpisodeLinks(urlCandidate, includeMegaRaw, excludeServersRaw) 
     },
     source: "jkanime",
   };
+  MemoryCache.set(cacheKey, result, 10 * 60 * 1000); // 10 minutes TTL
+  return result;
 }
 
 module.exports = {

@@ -3,6 +3,7 @@ const cheerio = require("cheerio");
 const vm = require("node:vm");
 const { URL } = require("node:url");
 const { ApiError } = require("../utils/api-error");
+const MemoryCache = require("../utils/cache");
 
 const DEFAULT_DOMAIN = "tioanime.com";
 
@@ -153,14 +154,28 @@ function buildLinkRecord(serverName, url, quality) {
 
 // Public API
 
-async function searchAnime(query, domainCandidate) {
+async function searchAnime(query, domainCandidate, genre) {
   const cleanQuery = (query || "").toString().trim();
-  if (!cleanQuery) {
-    throw new ApiError(400, "Se requiere el parametro q");
+  const cleanGenre = (genre || "").toString().trim();
+  if (!cleanQuery && !cleanGenre) {
+    throw new ApiError(400, "Se requiere el parametro q o genre");
   }
 
+  const cacheKey = `tio:search:${cleanQuery}:${domainCandidate || ''}:${cleanGenre}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
+
   const domain = (domainCandidate || DEFAULT_DOMAIN).toString().trim();
-  const searchUrl = `https://${domain}/directorio?q=${encodeURIComponent(cleanQuery)}`;
+  let searchUrl = `https://${domain}/directorio?`;
+  const params = [];
+  if (cleanQuery) {
+    params.push(`q=${encodeURIComponent(cleanQuery)}`);
+  }
+  if (cleanGenre) {
+    params.push(`genero[]=${encodeURIComponent(cleanGenre)}`);
+  }
+  searchUrl += params.join("&");
+
   const html = await fetchHtml(searchUrl);
 
   const $ = cheerio.load(html);
@@ -192,16 +207,22 @@ async function searchAnime(query, domainCandidate) {
     });
   });
 
-  return {
+  const result = {
     success: true,
-    data: { query: cleanQuery, results, count: results.length },
+    data: { query: cleanQuery, genre: cleanGenre, results, count: results.length },
     source: "tioanime",
   };
+  MemoryCache.set(cacheKey, result, 3 * 60 * 1000); // 3 minutes TTL
+  return result;
 }
 
 async function getAnimeInfo(urlCandidate) {
   const slug = slugFromUrl(urlCandidate);
   if (!slug) throw new ApiError(400, "URL invalida");
+
+  const cacheKey = `tio:info:${urlCandidate}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
 
   const animeUrl = `https://${DEFAULT_DOMAIN}/anime/${slug}`;
   const html = await fetchHtml(animeUrl);
@@ -242,7 +263,7 @@ async function getAnimeInfo(urlCandidate) {
       url: `https://${DEFAULT_DOMAIN}/ver/${slug}-${ep.number}`,
     }));
 
-  return {
+  const result = {
     success: true,
     data: {
       id: null,
@@ -266,6 +287,8 @@ async function getAnimeInfo(urlCandidate) {
     },
     source: "tioanime",
   };
+  MemoryCache.set(cacheKey, result, 10 * 60 * 1000); // 10 minutes TTL
+  return result;
 }
 
 async function getEpisodeLinks(urlCandidate) {
@@ -275,6 +298,10 @@ async function getEpisodeLinks(urlCandidate) {
   if (!slug || !episodeNumber) {
     throw new ApiError(400, "URL invalida - no se pudo extraer slug y numero");
   }
+
+  const cacheKey = `tio:episode:${urlCandidate}`;
+  const cached = MemoryCache.get(cacheKey);
+  if (cached) return cached;
 
   const episodeUrl = `https://${DEFAULT_DOMAIN}/ver/${slug}-${episodeNumber}`;
   const html = await fetchHtml(episodeUrl);
@@ -299,7 +326,7 @@ async function getEpisodeLinks(urlCandidate) {
   const episodeTitle =
     cheerio.load(html)("h1.title, h1").first().text().trim() || `Episodio ${episodeNumber}`;
 
-  return {
+  const result = {
     success: true,
     data: {
       id: null,
@@ -326,6 +353,8 @@ async function getEpisodeLinks(urlCandidate) {
     },
     source: "tioanime",
   };
+  MemoryCache.set(cacheKey, result, 10 * 60 * 1000); // 10 minutes TTL
+  return result;
 }
 
 module.exports = {

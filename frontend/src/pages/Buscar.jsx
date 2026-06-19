@@ -221,7 +221,13 @@ export const Buscar = () => {
     }
   }, [isAuthenticated, selectedAnime, animeInfo, authFetch, API_BASE]);
 
-  const handleVerOnline = async (ep) => {
+  const sortedEpisodes = animeInfo?.episodios
+    ? [...animeInfo.episodios].sort((a, b) => a.numero - b.numero)
+    : [];
+  const currentIdx = sortedEpisodes.findIndex(ep => ep.url === activeStreamingEpisode?.url);
+
+  const handleVerOnline = useCallback(async (ep) => {
+    if (!ep) return;
     setActiveStreamingEpisode(ep);
     setLoadingStream(true);
     setStreamingInfo(null);
@@ -264,7 +270,36 @@ export const Buscar = () => {
     } finally {
       setLoadingStream(false);
     }
-  };
+  }, [saveProgress, selectedSubDub, selectedServerName]);
+
+  // Listen to keyboard shortcuts for player modal
+  useEffect(() => {
+    if (!activeStreamingEpisode) return;
+
+    const handleKeyDown = (e) => {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      if (isInput) return;
+
+      if (e.key === 'Escape') {
+        setActiveStreamingEpisode(null);
+        setStreamingInfo(null);
+        setSelectedServerUrl('');
+      } else if (e.key.toLowerCase() === 'n') {
+        if (currentIdx !== -1 && currentIdx < sortedEpisodes.length - 1) {
+          handleVerOnline(sortedEpisodes[currentIdx + 1]);
+        }
+      } else if (e.key.toLowerCase() === 'p') {
+        if (currentIdx > 0) {
+          handleVerOnline(sortedEpisodes[currentIdx - 1]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeStreamingEpisode, currentIdx, sortedEpisodes, handleVerOnline]);
 
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
@@ -333,11 +368,6 @@ export const Buscar = () => {
     triggerToastAndRedirect(animeInfo.episodios.length);
     agregarTodos(animeInfo.episodios);
   };
-
-  const sortedEpisodes = animeInfo?.episodios
-    ? [...animeInfo.episodios].sort((a, b) => a.numero - b.numero)
-    : [];
-  const currentIdx = sortedEpisodes.findIndex(ep => ep.url === activeStreamingEpisode?.url);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 relative">
@@ -614,18 +644,22 @@ export const Buscar = () => {
                   {animeInfo?.titulo} — {activeStreamingEpisode.nombre}
                 </h3>
               </div>
-              <button
-                onClick={() => {
-                  setActiveStreamingEpisode(null);
-                  setStreamingInfo(null);
-                  setSelectedServerUrl('');
-                }}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400 font-bold"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center space-x-3">
+                <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-1 rounded hidden sm:inline-block">ESC</span>
+                <button
+                  onClick={() => {
+                    setActiveStreamingEpisode(null);
+                    setStreamingInfo(null);
+                    setSelectedServerUrl('');
+                  }}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white/5 hover:bg-accent-red hover:text-white transition-colors duration-200 text-slate-400 font-bold"
+                  title="Cerrar reproductor (Esc)"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Main Content Area */}
@@ -655,6 +689,16 @@ export const Buscar = () => {
                     </div>
                   )}
 
+                  {/* Same-Origin Autoplay Warning / Tip */}
+                  <div className="mx-4 sm:mx-0 bg-blue-500/10 border border-blue-500/20 text-blue-300 px-4 py-3 rounded-xl text-xs flex items-center space-x-2">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      <strong>Autoreproducción:</strong> Debido a políticas de seguridad del navegador con reproductores externos, no se puede detectar automáticamente el final del video. Haz clic fuera del video y presiona la tecla <strong className="bg-white/10 px-1 py-0.5 rounded text-white font-extrabold">N</strong> para ir al siguiente episodio, o <strong className="bg-white/10 px-1 py-0.5 rounded text-white font-extrabold">P</strong> para el anterior.
+                    </span>
+                  </div>
+
                   {/* Player controls: Navigation & Server Info wrapped in mobile padding */}
                   <div className="p-4 sm:p-0 space-y-4 sm:space-y-6">
                     {/* Navigation Buttons */}
@@ -663,11 +707,12 @@ export const Buscar = () => {
                         onClick={() => handleVerOnline(sortedEpisodes[currentIdx - 1])}
                         disabled={currentIdx <= 0}
                         className="flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-all duration-200 disabled:opacity-30 disabled:hover:bg-white/5 disabled:cursor-not-allowed cursor-pointer"
+                        title="Episodio Anterior (P)"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
                         </svg>
-                        <span>Episodio Anterior</span>
+                        <span>Anterior [P]</span>
                       </button>
 
                       <span className="text-xs font-semibold text-slate-400 bg-black/30 px-3 py-1.5 rounded-lg border border-white/5 hidden sm:inline-block">
@@ -678,8 +723,9 @@ export const Buscar = () => {
                         onClick={() => handleVerOnline(sortedEpisodes[currentIdx + 1])}
                         disabled={currentIdx === -1 || currentIdx >= sortedEpisodes.length - 1}
                         className="flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent-red to-accent-purple hover:from-accent-red/90 hover:to-accent-purple/90 text-white text-xs font-bold transition-all duration-200 disabled:opacity-30 disabled:from-white/5 disabled:to-white/5 disabled:border-white/10 disabled:cursor-not-allowed glow-red shadow-lg cursor-pointer"
+                        title="Siguiente Episodio (N)"
                       >
-                        <span>Siguiente Episodio</span>
+                        <span>Siguiente [N]</span>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                         </svg>

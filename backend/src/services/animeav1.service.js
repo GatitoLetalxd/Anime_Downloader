@@ -902,11 +902,12 @@ async function getAnimeInfo(urlCandidate) {
 
 async function searchAnime(query, domainCandidate, genre) {
   const cleanQuery = (query || "").toString().trim();
-  if (!cleanQuery) {
-    throw new ApiError(400, "Se requiere el parametro q");
+  const cleanGenre = (genre || "").toString().trim();
+  if (!cleanQuery && !cleanGenre) {
+    throw new ApiError(400, "Se requiere el parametro q o genre");
   }
 
-  const cacheKey = `av1:search:${cleanQuery}:${domainCandidate || ''}:${genre || ''}`;
+  const cacheKey = `av1:search:${cleanQuery}:${domainCandidate || ''}:${cleanGenre}`;
   const cached = MemoryCache.get(cacheKey);
   if (cached) return cached;
 
@@ -915,13 +916,8 @@ async function searchAnime(query, domainCandidate, genre) {
   let bestResults = [];
   let bestSource = "html";
 
-  const candidates = [
-    { key: "search", value: cleanQuery },
-    { key: "q", value: cleanQuery },
-  ];
-
-  for (const candidate of candidates) {
-    const searchUrl = `https://${domain}/catalogo?${candidate.key}=${encodeURIComponent(candidate.value)}`;
+  if (!cleanQuery && cleanGenre) {
+    const searchUrl = `https://${domain}/catalogo?genre=${encodeURIComponent(cleanGenre)}`;
     const html = await fetchHtml(searchUrl);
 
     let results = [];
@@ -929,26 +925,54 @@ async function searchAnime(query, domainCandidate, genre) {
     if (svelteData) {
       const bestArray = chooseLikelySearchArray(svelteData);
       if (bestArray) {
-        // Build HTML image map as fallback for when SvelteKit JSON lacks images
         const imageMap = parseImageMapFromHtml(html, domain);
         results = mapSearchResults(bestArray, domain, imageMap);
       }
     }
 
     if (results.length === 0) {
-      // HTML fallback — parseSearchResultsFromHtml already extracts img src
       results = parseSearchResultsFromHtml(html, domain);
     }
 
-    results = filterSearchResultsByQuery(results, cleanQuery);
+    bestResults = results.slice(0, 20);
+    bestSource = svelteData ? "json" : "html";
+  } else {
+    const candidates = [
+      { key: "search", value: cleanQuery },
+      { key: "q", value: cleanQuery },
+    ];
 
-    if (results.length > bestResults.length) {
-      bestResults = results;
-      bestSource = svelteData ? "json" : "html";
-    }
+    for (const candidate of candidates) {
+      let searchUrl = `https://${domain}/catalogo?${candidate.key}=${encodeURIComponent(candidate.value)}`;
+      if (cleanGenre) {
+        searchUrl += `&genre=${encodeURIComponent(cleanGenre)}`;
+      }
+      const html = await fetchHtml(searchUrl);
 
-    if (bestResults.length >= 5) {
-      break;
+      let results = [];
+      const svelteData = extractSvelteData(html);
+      if (svelteData) {
+        const bestArray = chooseLikelySearchArray(svelteData);
+        if (bestArray) {
+          const imageMap = parseImageMapFromHtml(html, domain);
+          results = mapSearchResults(bestArray, domain, imageMap);
+        }
+      }
+
+      if (results.length === 0) {
+        results = parseSearchResultsFromHtml(html, domain);
+      }
+
+      results = filterSearchResultsByQuery(results, cleanQuery);
+
+      if (results.length > bestResults.length) {
+        bestResults = results;
+        bestSource = svelteData ? "json" : "html";
+      }
+
+      if (bestResults.length >= 5) {
+        break;
+      }
     }
   }
 
@@ -956,6 +980,7 @@ async function searchAnime(query, domainCandidate, genre) {
     success: true,
     data: {
       query: cleanQuery,
+      genre: cleanGenre,
       results: bestResults,
       count: bestResults.length,
     },
