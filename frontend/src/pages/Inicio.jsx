@@ -211,10 +211,14 @@ export const Inicio = () => {
                 <div className="relative w-36 h-52 rounded-xl overflow-hidden border border-white/10 shadow-lg mb-2">
                   {item.anime_cover ? (
                     <img
-                      src={`${API_BASE}/api/v1/anime/image-proxy?url=${encodeURIComponent(item.anime_cover)}`}
+                      src={getProxiedImageUrl(item.anime_cover)}
                       alt={item.anime_title}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop';
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-accent-red/20 to-accent-purple/20 flex items-center justify-center">

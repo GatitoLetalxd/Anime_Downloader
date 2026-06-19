@@ -689,16 +689,6 @@ export const Buscar = () => {
                     </div>
                   )}
 
-                  {/* Same-Origin Autoplay Warning / Tip */}
-                  <div className="mx-4 sm:mx-0 bg-blue-500/10 border border-blue-500/20 text-blue-300 px-4 py-3 rounded-xl text-xs flex items-center space-x-2">
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>
-                      <strong>Autoreproducción:</strong> Debido a políticas de seguridad del navegador con reproductores externos, no se puede detectar automáticamente el final del video. Haz clic fuera del video y presiona la tecla <strong className="bg-white/10 px-1 py-0.5 rounded text-white font-extrabold">N</strong> para ir al siguiente episodio, o <strong className="bg-white/10 px-1 py-0.5 rounded text-white font-extrabold">P</strong> para el anterior.
-                    </span>
-                  </div>
-
                   {/* Player controls: Navigation & Server Info wrapped in mobile padding */}
                   <div className="p-4 sm:p-0 space-y-4 sm:space-y-6">
                     {/* Navigation Buttons */}
