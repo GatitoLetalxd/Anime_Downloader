@@ -340,6 +340,44 @@ export const Inicio = () => {
           </div>
         )}
       </div>
+
+      {/* 4. Android App Promo Banner */}
+      <div className="glass-premium rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 items-center justify-between relative overflow-hidden shadow-2xl border border-white/5">
+        {/* Decorative background glow */}
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+        
+        {/* Left side content */}
+        <div className="flex flex-col md:flex-row gap-5 items-center md:items-start text-center md:text-left">
+          {/* Logo container */}
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/5">
+            <svg className="w-8 h-8 md:w-9 md:h-9 text-emerald-500 fill-current" viewBox="0 0 24 24">
+              <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
+            </svg>
+          </div>
+          
+          {/* Text */}
+          <div className="space-y-1.5 max-w-xl">
+            <h4 className="text-lg font-bold text-white tracking-wide">
+              Disfruta de LunielAnime en tu Android
+            </h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Lleva tu anime favorito a todas partes. Descarga nuestra aplicación móvil oficial para Android y experimenta una navegación nativa más rápida, descargas en lote en segundo plano y reproducción sin anuncios.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <a
+          href="/LunielAnime.apk"
+          download
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-500/90 hover:to-teal-600/90 text-white text-xs font-bold tracking-wide transition-all duration-300 shadow-lg shadow-emerald-500/10 flex items-center space-x-2 shrink-0 transform hover:scale-[1.02]"
+        >
+          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+          </svg>
+          <span>Descargar APK</span>
+        </a>
+      </div>
     </div>
   );
 };

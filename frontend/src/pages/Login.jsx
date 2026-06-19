@@ -253,6 +253,20 @@ export default function Login() {
           <p className="text-center text-xs text-slate-500 mt-8 font-medium">
             ¿No tienes cuenta? Contacta al administrador para obtener acceso.
           </p>
+
+          {/* Mobile App Download Link */}
+          <div className="mt-6 pt-6 border-t border-white/5 flex flex-col items-center">
+            <a
+              href="/LunielAnime.apk"
+              download
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all duration-200"
+            >
+              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 24 24">
+                <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
+              </svg>
+              <span>Descargar App para Android (APK)</span>
+            </a>
+          </div>
         </div>
       </div>
 

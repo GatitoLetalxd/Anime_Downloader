@@ -126,6 +126,19 @@ export const Navbar = () => {
                 </Link>
               );
             })}
+            
+            {/* Download App Link */}
+            <a
+              href="/LunielAnime.apk"
+              download
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-300"
+              title="Descargar App Móvil (Android)"
+            >
+              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 24 24">
+                <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
+              </svg>
+              <span>App Móvil</span>
+            </a>
           </div>
 
           {/* Connection Indicators */}
@@ -264,6 +277,18 @@ export const Navbar = () => {
               </Link>
             );
           })}
+
+          {/* Mobile App Download Link */}
+          <a
+            href="/LunielAnime.apk"
+            download
+            className="px-4 py-3 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5 text-emerald-500 fill-current" viewBox="0 0 24 24">
+              <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
+            </svg>
+            <span>Descargar App Móvil</span>
+          </a>
 
           {isAuthenticated && (
             <>
