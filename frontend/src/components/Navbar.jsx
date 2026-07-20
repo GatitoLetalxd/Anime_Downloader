@@ -4,7 +4,7 @@ import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../contexts/AuthContext';
 import { pingAPI } from '../lib/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import logoImg from '../assets/logo.png';
 
 // Dynamically import avatars
 const avatarModules = import.meta.glob('../assets/avatars/*.png', { eager: true });
@@ -25,7 +25,7 @@ export const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
-  // Periodic API health check — pause when tab is hidden
+  // Periodic API health check
   useEffect(() => {
     const checkHealth = async () => {
       if (document.visibilityState === 'hidden') return;
@@ -80,98 +80,101 @@ export const Navbar = () => {
   const avatarSrc = user ? getAvatarSrc(user.avatar) : null;
 
   return (
-    <nav className="sticky top-0 z-50 glass px-4 md:px-6 py-4 flex flex-col shadow-xl border-b border-white/5">
+    <nav className="sticky top-0 z-50 glass px-4 md:px-8 py-3.5 flex flex-col shadow-2xl border-b border-[#00f2ff]/15 backdrop-blur-2xl">
       <div className="flex items-center justify-between w-full">
-        {/* Logo */}
-        <Link to="/" className="flex items-center space-x-3 group">
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl overflow-hidden flex items-center justify-center glow-red transition-transform duration-300 group-hover:scale-110">
+        
+        {/* Logo with Cyber Anime Emblem */}
+        <Link to="/" className="flex items-center space-x-3.5 group">
+          <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl overflow-hidden flex items-center justify-center border border-[#00f2ff]/40 bg-[#081631] glow-cyan transition-all duration-300 group-hover:scale-105 group-hover:border-[#00f2ff]">
             <img
-              src="/images/logo.png"
-              alt="LunielAnime Logo"
+              src={logoImg}
+              alt="LunielAnime Emblem"
               className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.style.display = 'none';
-                const parent = e.target.parentElement;
-                parent.className += " bg-gradient-to-tr from-accent-red to-accent-purple";
-                parent.innerHTML = '<svg class="w-4 h-4 md:w-5 md:h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-              }}
             />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#00f2ff]/10 to-transparent pointer-events-none" />
           </div>
-          <span className="text-lg md:text-xl font-extrabold tracking-wider bg-gradient-to-r from-white via-slate-100 to-accent-red bg-clip-text text-transparent">
-            Luniel<span className="text-accent-red">Anime</span>
-          </span>
+          
+          <div className="flex flex-col">
+            <span className="text-xl md:text-2xl font-black tracking-widest text-gradient-cyan group-hover:brightness-125 transition-all">
+              LUNIEL<span className="text-[#00f2ff]">ANIME</span>
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-[0.25em] text-[#38bdf8] -mt-1 opacity-90">
+              ONLINE • TV
+            </span>
+          </div>
         </Link>
 
-        {/* Desktop Nav Links & Status */}
+        {/* Desktop Nav Links & Connection Status */}
         <div className="hidden md:flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 bg-[#030b1e]/60 p-1.5 rounded-2xl border border-white/5">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isActive
-                    ? 'text-accent-red bg-white/5'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    }`}
+                  className={`relative px-4 py-2 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${
+                    isActive
+                      ? 'text-white bg-[#00f2ff]/15 border border-[#00f2ff]/40 glow-cyan'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
                 >
                   {item.name}
                   {item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-red text-[10px] font-bold text-white animate-pulse">
+                    <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#00f2ff] text-[10px] font-black text-black animate-pulse shadow-[0_0_10px_#00f2ff]">
                       {item.badge}
                     </span>
                   )}
                 </Link>
               );
             })}
-            
-            {/* Download App Link */}
+
+            {/* Download Android APK Link */}
             <a
               href="/LunielAnime.apk"
               download
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-300"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-extrabold text-[#38bdf8] hover:text-white hover:bg-[#38bdf8]/15 border border-transparent hover:border-[#38bdf8]/30 transition-all duration-300"
               title="Descargar App Móvil (Android)"
             >
-              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[#00f2ff] fill-current animate-pulse" viewBox="0 0 24 24">
                 <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
               </svg>
-              <span>App Móvil</span>
+              <span>App Android</span>
             </a>
           </div>
 
           {/* Connection Indicators */}
           <div className="flex items-center space-x-4 text-xs font-semibold text-slate-400 pl-4 border-l border-white/10">
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] tracking-wider uppercase opacity-80">API:</span>
-              <span className={`inline-block w-2.5 h-2.5 rounded-full transition-colors duration-500 ${apiConnected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-accent-red shadow-[0_0_10px_rgba(232,57,90,0.5)]'}`} />
+            <div className="flex items-center space-x-2" title="API Status">
+              <span className="text-[9px] tracking-widest uppercase font-bold text-slate-400">API:</span>
+              <span className={`inline-block w-2.5 h-2.5 rounded-full transition-all duration-500 ${apiConnected ? 'bg-[#00f2ff] shadow-[0_0_10px_#00f2ff]' : 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'}`} />
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] tracking-wider uppercase opacity-80">Sockets:</span>
-              <span className={`inline-block w-2.5 h-2.5 rounded-full transition-colors duration-500 ${socketConnected ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-accent-red shadow-[0_0_10px_rgba(232,57,90,0.5)]'}`} />
+            <div className="flex items-center space-x-2" title="Sockets Status">
+              <span className="text-[9px] tracking-widest uppercase font-bold text-slate-400">WS:</span>
+              <span className={`inline-block w-2.5 h-2.5 rounded-full transition-all duration-500 ${socketConnected ? 'bg-[#00f2ff] shadow-[0_0_10px_#00f2ff]' : 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'}`} />
             </div>
           </div>
 
-          {/* User menu */}
+          {/* User Profile Menu */}
           {isAuthenticated && (
             <div className="relative" ref={userMenuRef}>
               <button
                 id="navbar-user-menu-btn"
                 onClick={() => setIsUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-white/5 transition-all duration-200 group"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#081631]/80 border border-[#00f2ff]/20 hover:border-[#00f2ff]/50 hover:bg-[#0d1f42] transition-all duration-200 group"
               >
                 {/* Avatar */}
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-red/40 to-accent-purple/40 border border-white/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-[#00f2ff]/20 border border-[#00f2ff]/40 overflow-hidden flex items-center justify-center flex-shrink-0">
                   {avatarSrc ? (
                     <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xs font-bold text-white">{user?.username?.slice(0, 2).toUpperCase()}</span>
+                    <span className="text-xs font-extrabold text-[#00f2ff]">{user?.username?.slice(0, 2).toUpperCase()}</span>
                   )}
                 </div>
-                <span className="text-sm font-semibold text-slate-300 group-hover:text-white transition-colors">
+                <span className="text-xs font-extrabold text-slate-200 group-hover:text-white transition-colors">
                   {user?.username}
                 </span>
+
                 {user?.role !== 'admin' && user?.expires_at && (
                   (() => {
                     const expiry = new Date(user.expires_at);
@@ -180,10 +183,10 @@ export const Navbar = () => {
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     if (diffDays > 0) {
                       return (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none ${
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md leading-none ${
                           diffDays <= 5
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-accent-blue/20 text-accent-blue border border-accent-blue/30'
+                            : 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/30'
                         }`}>
                           {diffDays}d
                         </span>
@@ -192,30 +195,39 @@ export const Navbar = () => {
                     return null;
                   })()
                 )}
-                <svg className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180 text-[#00f2ff]' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {/* Dropdown */}
+              {/* User Dropdown */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-bg-secondary border border-white/10 rounded-xl shadow-2xl py-1 overflow-hidden animate-fade-in">
-                  <Link to="/perfil" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
-                    <span>👤</span> Mi Perfil
+                <div className="absolute right-0 top-full mt-2 w-52 glass-premium border border-[#00f2ff]/30 rounded-2xl shadow-2xl py-2 overflow-hidden animate-fade-in z-50">
+                  <div className="px-4 py-2 border-b border-white/5 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Conectado como</p>
+                    <p className="text-xs font-black text-[#00f2ff] truncate">{user?.username}</p>
+                  </div>
+
+                  <Link to="/perfil" className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-[#00f2ff]/10 transition-colors">
+                    <span className="text-[#00f2ff]">👤</span> Mi Perfil
                   </Link>
-                  <Link to="/favoritos" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
-                    <span>♥</span> Favoritos
+                  <Link to="/favoritos" className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white hover:bg-[#00f2ff]/10 transition-colors">
+                    <span className="text-[#00f2ff]">♥</span> Mis Favoritos
                   </Link>
+
                   {isAdmin && (
-                    <Link to="/admin" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-accent-red hover:text-red-300 hover:bg-white/5 transition-colors">
-                      <span>⚡</span> Panel Admin
+                    <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-xs font-extrabold text-[#00f2ff] hover:bg-[#00f2ff]/15 transition-colors">
+                      <span>⚡</span> Panel Administración
                     </Link>
                   )}
-                  <div className="my-1 border-t border-white/5" />
+
+                  <div className="my-1.5 border-t border-white/10" />
+
                   <button
                     id="navbar-logout-btn"
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-400 hover:text-red-400 hover:bg-white/5 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left"
                   >
                     <span>🚪</span> Cerrar Sesión
                   </button>
@@ -225,52 +237,51 @@ export const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile right side */}
-        <div className="flex md:hidden items-center gap-2">
-          {/* Mobile avatar */}
+        {/* Mobile Hamburger & Avatar */}
+        <div className="flex md:hidden items-center gap-3">
           {isAuthenticated && (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-red/40 to-accent-purple/40 border border-white/20 overflow-hidden flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#00f2ff]/20 border border-[#00f2ff]/40 overflow-hidden flex items-center justify-center">
               {avatarSrc ? (
                 <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xs font-bold text-white">{user?.username?.slice(0, 2).toUpperCase()}</span>
+                <span className="text-xs font-extrabold text-[#00f2ff]">{user?.username?.slice(0, 2).toUpperCase()}</span>
               )}
             </div>
           )}
 
-          {/* Mobile Hamburger */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 focus:outline-none touch-manipulation"
+            className="p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-[#00f2ff]/10 focus:outline-none border border-white/10"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-[#00f2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isMobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
               )}
             </svg>
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Dropdown Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden mt-4 pt-4 border-t border-white/5 flex flex-col space-y-1 animate-fade-in">
+        <div className="md:hidden mt-4 pt-4 border-t border-[#00f2ff]/20 flex flex-col space-y-1.5 animate-fade-in">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`relative px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 flex items-center justify-between ${isActive
-                  ? 'text-accent-red bg-white/5'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-                  }`}
+                className={`px-4 py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-between ${
+                  isActive
+                    ? 'text-white bg-[#00f2ff]/15 border border-[#00f2ff]/40 glow-cyan'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
               >
-                {item.name}
+                <span>{item.name}</span>
                 {item.badge > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-red text-[10px] font-bold text-white">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00f2ff] text-[10px] font-black text-black">
                     {item.badge}
                   </span>
                 )}
@@ -278,53 +289,34 @@ export const Navbar = () => {
             );
           })}
 
-          {/* Mobile App Download Link */}
           <a
             href="/LunielAnime.apk"
             download
-            className="px-4 py-3 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all duration-300 flex items-center gap-2"
+            className="px-4 py-3 rounded-xl text-sm font-extrabold text-[#38bdf8] hover:text-white hover:bg-[#38bdf8]/10 flex items-center gap-2.5"
           >
-            <svg className="w-5 h-5 text-emerald-500 fill-current" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#00f2ff] fill-current" viewBox="0 0 24 24">
               <path d="M16.62 19.14l1.54 2.66c.16.27.06.61-.21.77-.27.16-.61.06-.77-.21l-1.56-2.7c-2.32.9-4.92.9-7.24 0l-1.56 2.7c-.16.27-.5.37-.77.21-.27-.16-.37-.5-.21-.77l1.54-2.66C3.99 16.71 2 13.58 2 10h20c0 3.58-1.99 6.71-4.38 9.14zM7 7.5c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5zm10 0c-.28 0-.5.22-.5.5s.22.5.5.5.5-.22.5-.5-.22-.5-.5-.5z" />
             </svg>
-            <span>Descargar App Móvil</span>
+            <span>Descargar App Android APK</span>
           </a>
 
           {isAuthenticated && (
             <>
-              <Link to="/perfil" className="px-4 py-3 rounded-lg text-base font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span>👤</span> Mi Perfil
+              <Link to="/perfil" className="px-4 py-3 rounded-xl text-sm font-extrabold text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between">
+                <span className="flex items-center gap-2.5">
+                  <span className="text-[#00f2ff]">👤</span> Mi Perfil
                 </span>
-                {user?.role !== 'admin' && user?.expires_at && (
-                  (() => {
-                    const expiry = new Date(user.expires_at);
-                    const now = new Date();
-                    const diffTime = expiry - now;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays > 0) {
-                      return (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                          diffDays <= 5
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-accent-blue/20 text-accent-blue border border-accent-blue/30'
-                        }`}>
-                          {diffDays}d restantes
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()
-                )}
               </Link>
+
               {isAdmin && (
-                <Link to="/admin" className="px-4 py-3 rounded-lg text-base font-medium text-accent-red hover:bg-white/5 transition-all flex items-center gap-2">
+                <Link to="/admin" className="px-4 py-3 rounded-xl text-sm font-extrabold text-[#00f2ff] hover:bg-[#00f2ff]/10 flex items-center gap-2.5">
                   <span>⚡</span> Panel Admin
                 </Link>
               )}
+
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-3 rounded-lg text-base font-medium text-slate-400 hover:text-red-400 hover:bg-white/5 transition-all flex items-center gap-2"
+                className="w-full text-left px-4 py-3 rounded-xl text-sm font-extrabold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-2.5"
               >
                 <span>🚪</span> Cerrar Sesión
               </button>
@@ -332,14 +324,14 @@ export const Navbar = () => {
           )}
 
           {/* Mobile Connection Status */}
-          <div className="px-4 py-3 flex items-center justify-between text-xs font-semibold text-slate-400 mt-2 bg-black/20 rounded-lg">
+          <div className="px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-400 mt-2 bg-[#030b1e]/80 rounded-xl border border-white/5">
             <div className="flex items-center space-x-2">
               <span className="text-[10px] tracking-wider uppercase opacity-80">API:</span>
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${apiConnected ? 'bg-emerald-500' : 'bg-accent-red'}`} />
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${apiConnected ? 'bg-[#00f2ff] shadow-[0_0_8px_#00f2ff]' : 'bg-rose-500'}`} />
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] tracking-wider uppercase opacity-80">Sockets:</span>
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${socketConnected ? 'bg-emerald-500' : 'bg-accent-red'}`} />
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${socketConnected ? 'bg-[#00f2ff] shadow-[0_0_8px_#00f2ff]' : 'bg-rose-500'}`} />
             </div>
           </div>
         </div>

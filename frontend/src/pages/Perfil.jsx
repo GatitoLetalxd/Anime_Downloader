@@ -3,20 +3,17 @@ import { useAuth } from '../contexts/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Dynamically import all avatar images from the assets/avatars folder
 const avatarModules = import.meta.glob('../assets/avatars/*.png', { eager: true });
 const AVATARS = Object.entries(avatarModules).map(([path, mod]) => ({
   name: path.split('/').pop(),
   src: mod.default,
 }));
 
-// Fallback if no avatars exist yet
 const DEFAULT_AVATAR_EMOJI = '🎌';
 
-// ── Icons ──────────────────────────────────────────────────────────────────────
 const UserIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="8" r="4" />
     <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
   </svg>
@@ -24,7 +21,7 @@ const UserIcon = () => (
 
 const ShieldIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" />
     <path d="M9 12l2 2 4-4" />
   </svg>
@@ -45,12 +42,11 @@ const EyeIcon = ({ open }) => open ? (
   </svg>
 );
 
-// ── Password Input ─────────────────────────────────────────────────────────────
 function PasswordInput({ id, label, value, onChange, placeholder }) {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
         {label}
       </label>
       <div className="relative">
@@ -60,12 +56,12 @@ function PasswordInput({ id, label, value, onChange, placeholder }) {
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="w-full bg-bg-primary border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-accent-red/60 transition-colors"
+          className="w-full bg-[#030b1e] border border-white/10 rounded-xl px-4 py-3 pr-10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00f2ff] transition-colors"
         />
         <button
           type="button"
           onClick={() => setVisible(v => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#00f2ff] transition-colors"
           tabIndex={-1}
         >
           <EyeIcon open={visible} />
@@ -75,19 +71,17 @@ function PasswordInput({ id, label, value, onChange, placeholder }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
 export default function Perfil() {
   const { user, authFetch, refreshSession } = useAuth();
   const [selectedAvatar, setSelectedAvatar] = useState('avatar1.png');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdSaving, setPwdSaving] = useState(false);
-  const [pwdMessage, setPwdMessage] = useState({ text: '', type: '' }); // type: 'success' | 'error'
+  const [pwdMessage, setPwdMessage] = useState({ text: '', type: '' });
 
   useEffect(() => {
     if (user?.avatar) {
@@ -167,17 +161,19 @@ export default function Perfil() {
     : ['', message];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-2xl mx-auto px-4 py-10 space-y-8 animate-fade-in">
+      
       {/* Header */}
-      <h1 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-        <span className="text-accent-red"><UserIcon /></span>
-        Mi Perfil
-      </h1>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-[#00f2ff]/15 border border-[#00f2ff]/30 flex items-center justify-center text-[#00f2ff] glow-cyan">
+          <UserIcon />
+        </div>
+        <h1 className="text-2xl font-black text-white">Mi Perfil</h1>
+      </div>
 
-      {/* Profile card */}
-      <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 mb-6 flex items-center gap-5">
-        {/* Current avatar */}
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent-red/30 to-accent-purple/30 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+      {/* Profile Card */}
+      <div className="bg-[#0d1f42]/90 border border-[#00f2ff]/30 rounded-3xl p-6 flex items-center gap-5 shadow-2xl">
+        <div className="w-20 h-20 rounded-2xl bg-[#030b1e] border border-[#00f2ff]/40 flex items-center justify-center overflow-hidden flex-shrink-0 glow-cyan">
           {currentAvatarSrc ? (
             <img src={currentAvatarSrc} alt="avatar" className="w-full h-full object-cover" />
           ) : (
@@ -186,38 +182,38 @@ export default function Perfil() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <p className="text-xl font-bold text-white">{user?.username}</p>
-          <p className="text-slate-400 text-sm">{user?.email}</p>
+          <p className="text-xl font-black text-white">{user?.username}</p>
+          <p className="text-slate-300 text-xs font-semibold">{user?.email}</p>
           <span
-            className={`mt-1 inline-block text-xs font-bold px-2 py-0.5 rounded-full w-fit ${
+            className={`mt-1.5 inline-block text-[10px] font-black px-2.5 py-0.5 rounded-md w-fit uppercase tracking-wider ${
               user?.role === 'admin'
-                ? 'bg-accent-red/20 text-accent-red border border-accent-red/30'
-                : 'bg-white/5 text-slate-400 border border-white/10'
+                ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/40 glow-cyan'
+                : 'bg-white/10 text-slate-300 border border-white/10'
             }`}
           >
-            {user?.role === 'admin' ? '⚡ Admin' : 'Usuario'}
+            {user?.role === 'admin' ? '⚡ Administrador' : 'Usuario'}
           </span>
         </div>
       </div>
 
-      {/* Subscription / Time Remaining card */}
-      <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Access Status Card */}
+      <div className="bg-[#0d1f42]/90 border border-white/10 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <span className="text-accent-blue">
+          <h2 className="text-sm font-black text-white flex items-center gap-2">
+            <span className="text-[#00f2ff]">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </span>
-            Estado de Acceso
+            Estado de Acceso a la Plataforma
           </h2>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-300 text-xs font-medium mt-1">
             {user?.role === 'admin'
-              ? 'Tu cuenta es de administrador y tiene acceso ilimitado a todas las funciones.'
+              ? 'Acceso administrativo ilimitado.'
               : !user?.expires_at
-              ? 'Tienes una suscripción activa con acceso ilimitado.'
-              : `Tu acceso temporal está programado para finalizar el ${new Date(user.expires_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}.`}
+              ? 'Acceso activo ilimitado.'
+              : `Programado para finalizar el ${new Date(user.expires_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}.`}
           </p>
         </div>
 
@@ -225,8 +221,8 @@ export default function Perfil() {
           {(() => {
             if (user?.role === 'admin' || !user?.expires_at) {
               return (
-                <span className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide">
-                  Acceso Ilimitado
+                <span className="px-4 py-2 rounded-xl text-xs font-black bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/40 uppercase tracking-wide glow-cyan">
+                  Ilimitado
                 </span>
               );
             }
@@ -238,16 +234,8 @@ export default function Perfil() {
 
             if (diffDays <= 0) {
               return (
-                <span className="px-4 py-2 rounded-xl text-xs font-black bg-red-500/20 text-red-400 border border-red-500/30 uppercase tracking-wide">
+                <span className="px-4 py-2 rounded-xl text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/40 uppercase tracking-wide">
                   Expirado
-                </span>
-              );
-            }
-
-            if (diffDays === 1) {
-              return (
-                <span className="px-4 py-2 rounded-xl text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wide animate-pulse">
-                  Expira Mañana
                 </span>
               );
             }
@@ -255,8 +243,8 @@ export default function Perfil() {
             return (
               <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide border ${
                 diffDays <= 5
-                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                  : 'bg-accent-blue/20 text-accent-blue border-accent-blue/30'
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                  : 'bg-[#00f2ff]/20 text-[#00f2ff] border-[#00f2ff]/40'
               }`}>
                 {diffDays} Días Restantes
               </span>
@@ -265,24 +253,19 @@ export default function Perfil() {
         </div>
       </div>
 
-      {/* Avatar selector */}
-      <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6 mb-6">
-        <h2 className="text-base font-bold text-white mb-4">Elegir Avatar</h2>
+      {/* Avatar Selector Card */}
+      <div className="bg-[#0d1f42]/90 border border-white/10 rounded-3xl p-6 shadow-xl">
+        <h2 className="text-sm font-black text-white mb-4">Seleccionar Avatar</h2>
 
-        {AVATARS.length === 0 ? (
-          <div className="text-slate-500 text-sm py-4 text-center">
-            No hay avatares disponibles aún. Coloca imágenes en{' '}
-            <code className="text-slate-400">frontend/src/assets/avatars/</code>
-          </div>
-        ) : (
+        {AVATARS.length > 0 && (
           <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3 mb-5">
             {AVATARS.map((avatar) => (
               <button
                 key={avatar.name}
                 onClick={() => setSelectedAvatar(avatar.name)}
-                className={`w-full aspect-square rounded-xl overflow-hidden border-2 transition-all duration-150 ${
+                className={`w-full aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-150 cursor-pointer ${
                   selectedAvatar === avatar.name
-                    ? 'border-accent-red shadow-lg shadow-accent-red/30 scale-105'
+                    ? 'border-[#00f2ff] glow-cyan scale-105'
                     : 'border-white/10 hover:border-white/30'
                 }`}
                 title={avatar.name}
@@ -293,33 +276,26 @@ export default function Perfil() {
           </div>
         )}
 
-        {/* Feedback message */}
         {avatarMsgText && (
-          <p className={`text-sm mb-3 flex items-center gap-1.5 ${avatarMsgType === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-            {avatarMsgType === 'success' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            )}
+          <p className={`text-xs font-bold mb-3 flex items-center gap-1.5 ${avatarMsgType === 'success' ? 'text-[#00f2ff]' : 'text-rose-400'}`}>
             {avatarMsgText}
           </p>
         )}
 
-        {/* Save button */}
         <button
           id="save-avatar-btn"
           onClick={handleSaveAvatar}
           disabled={isSaving || selectedAvatar === user?.avatar || AVATARS.length === 0}
-          className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-accent-red to-accent-purple hover:opacity-90 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+          className="px-6 py-3 rounded-2xl font-black text-black bg-[#00f2ff] hover:bg-[#70f3ff] transition-all disabled:opacity-40 disabled:cursor-not-allowed text-xs uppercase tracking-wider glow-cyan cursor-pointer"
         >
           {isSaving ? 'Guardando...' : 'Guardar Avatar'}
         </button>
       </div>
 
-      {/* ── Change Password ──────────────────────────────────────────────────── */}
-      <div className="bg-bg-secondary border border-white/10 rounded-2xl p-6">
-        <h2 className="text-base font-bold text-white mb-5 flex items-center gap-2">
-          <span className="text-accent-red"><ShieldIcon /></span>
+      {/* Change Password Card */}
+      <div className="bg-[#0d1f42]/90 border border-white/10 rounded-3xl p-6 shadow-xl">
+        <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2">
+          <span className="text-[#00f2ff]"><ShieldIcon /></span>
           Cambiar Contraseña
         </h2>
 
@@ -332,7 +308,6 @@ export default function Perfil() {
             placeholder="••••••••"
           />
 
-          {/* Divider */}
           <div className="border-t border-white/5 pt-1" />
 
           <PasswordInput
@@ -350,33 +325,8 @@ export default function Perfil() {
             placeholder="Repite la nueva contraseña"
           />
 
-          {/* Password strength hint */}
-          {newPassword.length > 0 && (
-            <div className="flex gap-1.5 items-center">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                    newPassword.length >= i * 4
-                      ? i === 1 ? 'bg-red-500' : i === 2 ? 'bg-yellow-400' : 'bg-green-400'
-                      : 'bg-white/10'
-                  }`}
-                />
-              ))}
-              <span className="text-xs text-slate-500 ml-1">
-                {newPassword.length < 4 ? 'Débil' : newPassword.length < 8 ? 'Regular' : 'Fuerte'}
-              </span>
-            </div>
-          )}
-
-          {/* Feedback */}
           {pwdMessage.text && (
-            <p className={`text-sm flex items-center gap-1.5 ${pwdMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-              {pwdMessage.type === 'success' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              )}
+            <p className={`text-xs font-bold ${pwdMessage.type === 'success' ? 'text-[#00f2ff]' : 'text-rose-400'}`}>
               {pwdMessage.text}
             </p>
           )}
@@ -385,7 +335,7 @@ export default function Perfil() {
             id="change-password-btn"
             type="submit"
             disabled={pwdSaving}
-            className="mt-1 px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-accent-red to-accent-purple hover:opacity-90 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed text-sm w-fit"
+            className="mt-2 px-6 py-3 rounded-2xl font-black text-black bg-[#00f2ff] hover:bg-[#70f3ff] transition-all disabled:opacity-40 text-xs uppercase tracking-wider glow-cyan w-fit cursor-pointer"
           >
             {pwdSaving ? 'Actualizando...' : 'Actualizar Contraseña'}
           </button>

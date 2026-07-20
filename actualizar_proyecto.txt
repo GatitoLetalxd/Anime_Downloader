@@ -1,0 +1,94 @@
+=============================================================================
+             GUÍA DE ACTUALIZACIÓN DEL PROYECTO (LUNIEL ANIME)
+=============================================================================
+
+Esta guía contiene los pasos ordenados que debes seguir en el VPS para actualizar
+el frontend, el backend y la base de datos cuando subas nuevos cambios a GitHub.
+
+Ubicación del proyecto: /root/Proyectos/LunielAnime
+
+-----------------------------------------------------------------------------
+PASO 1: CONECTARSE AL VPS E IR AL DIRECTORIO DEL PROYECTO
+-----------------------------------------------------------------------------
+Abre tu terminal, conéctate al VPS y navega a la carpeta raíz del proyecto:
+
+  cd /root/Proyectos/LunielAnime
+
+-----------------------------------------------------------------------------
+PASO 2: LIMPIAR EL ESTADO DE GIT Y TRAER CAMBIOS (PULL)
+-----------------------------------------------------------------------------
+Antes de descargar los cambios, verifica si hay modificaciones locales:
+
+  git status
+
+*NOTA: Como los archivos .env ya están en .gitignore y fuera del repositorio,
+ no deberían causar conflictos a menos que los vuelvas a rastrear por error.
+
+Si hiciste algún cambio local accidental que te impida hacer pull, puedes limpiarlo con:
+  git stash
+
+Descarga la última versión de la rama principal (main):
+
+  git pull origin main
+
+*(Si usaste "git stash" antes, puedes recuperar tus cambios locales con: "git stash pop")
+
+-----------------------------------------------------------------------------
+PASO 3: INSTALAR NUEVAS DEPENDENCIAS (Si cambiaron los package.json)
+-----------------------------------------------------------------------------
+Si en la actualización se añadieron nuevas librerías al Backend o Frontend, ejecuta:
+
+  # Para el Backend:
+  cd backend && npm install && cd ..
+
+  # Para el Frontend:
+  cd frontend && npm install && cd ..
+
+-----------------------------------------------------------------------------
+PASO 4: EJECUTAR MIGRACIONES DE LA BASE DE DATOS (Si hay cambios en la DB)
+-----------------------------------------------------------------------------
+Si la actualización incluye cambios en la base de datos (se modificó backend/src/db/schema.sql):
+
+  cd backend
+  node src/db/migrate.js
+  cd ..
+
+-----------------------------------------------------------------------------
+PASO 5: COMPILAR Y DESPLEGAR EL FRONTEND (Nginx)
+-----------------------------------------------------------------------------
+Cada vez que cambie el Frontend, debes compilarlo y pasar los archivos a Nginx:
+
+  # 1. Entrar a la carpeta frontend
+  cd frontend
+
+  # 2. Compilar el proyecto (genera la carpeta dist/)
+  npm run build
+
+  # 3. Copiar los archivos compilados a la ruta pública de Nginx
+  cp -r dist/* /var/www/lunielanime/
+
+  # 4. Regresar a la carpeta raíz
+  cd ..
+
+-----------------------------------------------------------------------------
+PASO 6: REINICIAR EL BACKEND (PM2)
+-----------------------------------------------------------------------------
+Reinicia el proceso de Node.js en memoria para que aplique la nueva lógica del backend:
+
+  pm2 restart lunielanime-backend
+
+-----------------------------------------------------------------------------
+COMANDOS DE DIAGNÓSTICO Y MONITOREO ÚTILES
+-----------------------------------------------------------------------------
+* Ver estado de los procesos en PM2:
+  pm2 status
+
+* Ver logs del backend en tiempo real (útil para detectar errores de conexión o API):
+  pm2 logs lunielanime-backend
+
+* Verificar el estado del servidor web Nginx:
+  systemctl status nginx
+
+* Recargar configuración de Nginx (solo si cambias configuraciones en /etc/nginx/):
+  nginx -t && systemctl reload nginx
+=============================================================================
