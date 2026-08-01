@@ -20,8 +20,20 @@ export const useDescargas = () => {
     const serverParam = opciones.preferredServer ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
     const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}&apiKey=${encodeURIComponent(API_KEY)}`;
 
-    const slug = urlEpisodio.split('/').filter(Boolean).pop() || 'anime';
-    const suggestedName = `${slug}.mp4`;
+    const parts = urlEpisodio.split('/').filter(Boolean);
+    const lastPart = parts[parts.length - 1] || 'anime';
+    const secondLastPart = parts[parts.length - 2] || 'anime';
+    let animeName = 'anime';
+    let epNum = '';
+
+    if (/^\d+$/.test(lastPart)) {
+      epNum = `ep${lastPart}`;
+      animeName = secondLastPart !== 'media' && secondLastPart !== 'ver' ? secondLastPart : 'anime';
+    } else {
+      animeName = lastPart;
+    }
+
+    const suggestedName = `${animeName}${epNum ? '-' + epNum : ''}.mp4`;
 
     try {
       addOrUpdateDescarga(downloadId, {
@@ -35,7 +47,6 @@ export const useDescargas = () => {
       const a = document.createElement('a');
       a.href = downloadStreamUrl;
       a.download = suggestedName;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {

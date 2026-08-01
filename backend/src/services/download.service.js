@@ -192,12 +192,24 @@ function extractEpisodeNumber(episodeUrl) {
 }
 
 function extractAnimeSlug(episodeUrl) {
-  const parts = episodeUrl.split("/").filter(Boolean);
-  const mediaIndex = parts.findIndex((part) => part === "media");
-  if (mediaIndex === -1 || !parts[mediaIndex + 1]) {
+  if (!episodeUrl || typeof episodeUrl !== "string") {
     return "anime";
   }
-  return safeFilePart(parts[mediaIndex + 1]) || "anime";
+  const parts = episodeUrl.split("/").filter(Boolean);
+  if (parts.length === 0) return "anime";
+
+  const mediaIndex = parts.findIndex((part) => part === "media" || part === "ver" || part === "anime");
+  if (mediaIndex !== -1 && parts[mediaIndex + 1]) {
+    return safeFilePart(parts[mediaIndex + 1]) || "anime";
+  }
+
+  const lastPart = parts[parts.length - 1];
+  const secondLastPart = parts[parts.length - 2];
+  if (/^\d+$/.test(lastPart) && secondLastPart) {
+    return safeFilePart(secondLastPart) || "anime";
+  }
+
+  return safeFilePart(lastPart) || "anime";
 }
 
 function getExtensionFromUrl(url) {
