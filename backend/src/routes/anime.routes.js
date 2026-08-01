@@ -195,8 +195,12 @@ router.get(
           `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${finalReferer}\r\n`
         ])
         .outputOptions([
-          "-c copy",
-          "-bsf:a aac_adtstoasc",
+          "-map 0:v:0?",
+          "-map 0:a:0?",
+          "-c:v copy",
+          "-c:a aac",
+          "-b:a 192k",
+          "-avoid_negative_ts make_zero",
           "-movflags frag_keyframe+empty_moov"
         ])
         .toFormat("mp4")

@@ -459,8 +459,7 @@ export const Buscar = () => {
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
-      navigate('/descargas');
-    }, 1500);
+    }, 4000);
   };
 
   const handleDownloadSelected = async (urls) => {
@@ -478,11 +477,19 @@ export const Buscar = () => {
       
       {/* Toast Notification */}
       {showToast && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto max-w-sm z-50 glass-premium glow-cyan px-5 py-4 rounded-2xl flex items-center space-x-3 text-white transition-all duration-300 transform animate-bounce shadow-2xl border border-[#00f2ff]/40">
-          <div className="w-8 h-8 rounded-full bg-[#00f2ff] text-black flex items-center justify-center font-extrabold">
-            ✓
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] sm:w-auto max-w-md z-50 glass-premium glow-cyan px-5 py-4 rounded-2xl flex items-center justify-between gap-4 text-white transition-all duration-300 transform shadow-2xl border border-[#00f2ff]/40">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-[#00f2ff] text-black flex items-center justify-center font-extrabold">
+              ✓
+            </div>
+            <span className="text-xs font-extrabold tracking-wide">{toastMessage}</span>
           </div>
-          <span className="text-xs font-extrabold tracking-wide">{toastMessage}</span>
+          <button
+            onClick={() => navigate('/descargas')}
+            className="text-[10px] font-black uppercase text-[#00f2ff] hover:underline px-2.5 py-1.5 rounded-xl bg-[#00f2ff]/10 border border-[#00f2ff]/30 cursor-pointer whitespace-nowrap"
+          >
+            Ver Cola →
+          </button>
         </div>
       )}
 
