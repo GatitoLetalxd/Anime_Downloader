@@ -567,21 +567,7 @@ export const Buscar = () => {
               )}
             </div>
 
-            {/* Smart MP4 Server Badge */}
-            <div className="p-3.5 rounded-2xl bg-[#081631] border border-[#00f2ff]/30 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#00f2ff]/10 border border-[#00f2ff]/30 text-[#00f2ff] flex items-center justify-center font-bold text-base">
-                ⚡
-              </div>
-              <div className="flex-1">
-                <div className="text-xs font-black text-white flex items-center gap-1.5">
-                  <span>Selección Automática MP4</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#00f2ff]/20 text-[#00f2ff] uppercase">Rápido</span>
-                </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
-                  Selecciona automáticamente el mejor servidor nativo (MP4Upload, YourUpload, Pixeldrain).
-                </div>
-              </div>
-            </div>
+
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
