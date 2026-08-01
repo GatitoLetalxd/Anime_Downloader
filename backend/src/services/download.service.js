@@ -985,7 +985,7 @@ async function resolveEmbedUrl(url, record, candidate) {
   return url;
 }
 
-function chooseCandidateLinks(episodeData, variant, preferredServer) {
+function chooseCandidateLinks(episodeData, variant, preferredServer, excludeServer) {
   const normalizedVariant = String(variant || "SUB").toUpperCase() === "DUB" ? "DUB" : "SUB";
   const otherVariant = normalizedVariant === "SUB" ? "DUB" : "SUB";
 
@@ -1012,6 +1012,11 @@ function chooseCandidateLinks(episodeData, variant, preferredServer) {
       continue;
     }
 
+    const sName = (item.server || "").toLowerCase();
+    if (excludeServer && sName.includes(String(excludeServer).toLowerCase())) {
+      continue;
+    }
+
     seen.add(key);
     deduped.push({
       server: item.server || "Unknown",
@@ -1020,7 +1025,7 @@ function chooseCandidateLinks(episodeData, variant, preferredServer) {
     });
   }
 
-  const preferredToken = safeFilePart(preferredServer);
+  const preferredToken = preferredServer && preferredServer !== "auto" ? safeFilePart(preferredServer) : null;
 
   deduped.sort((a, b) => {
     const serverA = safeFilePart(a.server);
@@ -1028,6 +1033,14 @@ function chooseCandidateLinks(episodeData, variant, preferredServer) {
 
     const preferredBonusA = preferredToken && serverA.includes(preferredToken) ? -100 : 0;
     const preferredBonusB = preferredToken && serverB.includes(preferredToken) ? -100 : 0;
+
+    const isHlsA = serverA.includes("hls") ? 1 : 0;
+    const isHlsB = serverB.includes("hls") ? 1 : 0;
+
+    // Direct MP4 servers get top priority; HLS is penalised so it's only chosen if no MP4 is available
+    if (isHlsA !== isHlsB && !preferredToken) {
+      return isHlsA - isHlsB;
+    }
 
     const priorityA = SERVER_PRIORITY.findIndex((token) => serverA.includes(token));
     const priorityB = SERVER_PRIORITY.findIndex((token) => serverB.includes(token));
@@ -1308,9 +1321,9 @@ async function runDownload(record, payload) {
   }
 }
 
-async function resolveEpisodeDirectUrl(episodeUrl, variant, preferredServer) {
+async function resolveEpisodeDirectUrl(episodeUrl, variant, preferredServer, excludeServer) {
   const episodeResponse = await animeService.getEpisodeLinks(episodeUrl, "true");
-  const candidates = chooseCandidateLinks(episodeResponse.data, variant, preferredServer);
+  const candidates = chooseCandidateLinks(episodeResponse.data, variant, preferredServer, excludeServer);
 
   if (candidates.length === 0) {
     throw new Error("No se encontraron enlaces para este episodio");

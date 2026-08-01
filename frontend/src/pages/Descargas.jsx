@@ -108,7 +108,10 @@ export const Descargas = () => {
 
   const handleRetry = async (d) => {
     cancelarDescarga(d.downloadId);
-    await agregarDescarga(d.url, d.title);
+    await agregarDescarga(d.url, d.title, {
+      preferredServer: 'auto',
+      excludeServer: d.failedServer || 'hls',
+    });
   };
 
   const tabs = [

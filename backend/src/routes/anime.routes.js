@@ -175,7 +175,8 @@ router.get(
     const { directUrl, server, isHls, referer: resolvedReferer } = await downloadService.resolveEpisodeDirectUrl(
       req.query.url,
       req.query.variant || "SUB",
-      req.query.server
+      req.query.server,
+      req.query.excludeServer
     );
 
     const slug = downloadService.extractAnimeSlug(req.query.url);

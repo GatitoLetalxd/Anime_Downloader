@@ -15,8 +15,9 @@ export const useDescargas = () => {
     const downloadId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const API_URL = getApiUrl();
-    const serverParam = opciones.preferredServer ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
-    const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}&apiKey=${encodeURIComponent(API_KEY)}`;
+    const serverParam = opciones.preferredServer && opciones.preferredServer !== 'auto' ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
+    const excludeParam = opciones.excludeServer ? `&excludeServer=${encodeURIComponent(opciones.excludeServer)}` : '';
+    const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}${excludeParam}&apiKey=${encodeURIComponent(API_KEY)}`;
 
     // Build clean filename: e.g. kaguya-sama-season-3-ep1.mp4
     const parts = urlEpisodio.split('/').filter(Boolean);

@@ -439,8 +439,10 @@ export const Buscar = () => {
     if (!pendingDownload || !animeInfo) return;
     setShowDownloadModal(false);
 
-    const opciones = { variant: dlVariant };
-    if (dlServer) opciones.preferredServer = dlServer;
+    const opciones = {
+      variant: dlVariant,
+      preferredServer: 'auto',
+    };
 
     if (pendingDownload.type === 'all') {
       triggerToastAndRedirect(animeInfo.episodios.length);
@@ -565,34 +567,20 @@ export const Buscar = () => {
               )}
             </div>
 
-            {/* Server Selection */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Servidor de Descarga</label>
-              <select
-                value={dlServer}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setDlServer(val);
-                  // Ensure selected variant is available for this server
-                  if (val) {
-                    if (dlVariant === 'SUB' && !isVariantAvailable('SUB')) {
-                      if (isVariantAvailable('DUB')) setDlVariant('DUB');
-                    } else if (dlVariant === 'DUB' && !isVariantAvailable('DUB')) {
-                      if (isVariantAvailable('SUB')) setDlVariant('SUB');
-                    }
-                  }
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#030b1e] border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#00f2ff] cursor-pointer"
-              >
-                {serverOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-[#081631] text-white">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[10px] text-slate-500">
-                Predeterminado: Automático (prioriza HLS / el servidor más óptimo).
-              </p>
+            {/* Smart MP4 Server Badge */}
+            <div className="p-3.5 rounded-2xl bg-[#081631] border border-[#00f2ff]/30 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#00f2ff]/10 border border-[#00f2ff]/30 text-[#00f2ff] flex items-center justify-center font-bold text-base">
+                ⚡
+              </div>
+              <div className="flex-1">
+                <div className="text-xs font-black text-white flex items-center gap-1.5">
+                  <span>Selección Automática MP4</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#00f2ff]/20 text-[#00f2ff] uppercase">Rápido</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Selecciona automáticamente el mejor servidor nativo (MP4Upload, YourUpload, Pixeldrain).
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}
