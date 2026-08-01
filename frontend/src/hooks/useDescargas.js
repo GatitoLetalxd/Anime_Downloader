@@ -38,75 +38,25 @@ export const useDescargas = () => {
       addOrUpdateDescarga(downloadId, {
         title: nombreEpisodio,
         url: urlEpisodio,
-        status: 'preparing',
-        progress: 0,
+        status: 'downloading',
+        progress: 100,
+        size: 'Descargando...',
         fileName: suggestedName,
       });
 
-      const response = await fetch(downloadStreamUrl);
-      if (!response.ok) {
-        throw new Error(`Error en el servidor (${response.status})`);
-      }
-
-      const contentLength = response.headers.get('content-length');
-      const totalBytes = contentLength ? parseInt(contentLength, 10) : null;
-      const reader = response.body.getReader();
-      const chunks = [];
-      let downloadedBytes = 0;
-      let lastUpdateTime = Date.now();
-      let lastUpdateBytes = 0;
-
-      addOrUpdateDescarga(downloadId, {
-        status: 'downloading',
-        size: totalBytes ? `${(totalBytes / (1024 * 1024)).toFixed(1)} MB` : 'Calculando...',
-      });
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        chunks.push(value);
-        downloadedBytes += value.length;
-
-        const now = Date.now();
-        const elapsed = (now - lastUpdateTime) / 1000;
-
-        if (elapsed >= 0.5) {
-          const progress = totalBytes
-            ? Math.round((downloadedBytes / totalBytes) * 100)
-            : Math.min(95, Math.round((downloadedBytes / (35 * 1024 * 1024)) * 100));
-          const bytesDiff = downloadedBytes - lastUpdateBytes;
-          const speed = bytesDiff / elapsed;
-          const speedMb = `${(speed / (1024 * 1024)).toFixed(2)} MB/s`;
-
-          addOrUpdateDescarga(downloadId, {
-            progress,
-            speedText: speedMb,
-            downloadedBytes,
-            size: `${(downloadedBytes / (1024 * 1024)).toFixed(1)} MB`,
-          });
-
-          lastUpdateTime = now;
-          lastUpdateBytes = downloadedBytes;
-        }
-      }
-
-      // Combine chunks into a single video Blob
-      const blob = new Blob(chunks, { type: 'video/mp4' });
-      const blobUrl = window.URL.createObjectURL(blob);
-
-      // Trigger browser download dialog for the blob
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = blobUrl;
-      a.download = suggestedName;
-      document.body.appendChild(a);
-      a.click();
+      // Use invisible iframe to trigger browser download attachment natively
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = downloadStreamUrl;
+      document.body.appendChild(iframe);
 
       setTimeout(() => {
-        window.URL.revokeObjectURL(blobUrl);
-        document.body.removeChild(a);
-      }, 2000);
+        try {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        } catch (_e) {}
+      }, 60000);
 
       const completedData = {
         downloadId,
@@ -114,7 +64,7 @@ export const useDescargas = () => {
         url: urlEpisodio,
         status: 'completed',
         progress: 100,
-        size: `${(downloadedBytes / (1024 * 1024)).toFixed(1)} MB`,
+        size: 'Descargado',
         completedAt: Date.now(),
         fileName: suggestedName,
       };

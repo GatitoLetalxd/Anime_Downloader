@@ -155,7 +155,7 @@ const HTML_HEADERS = {
   "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 };
 
-const SERVER_PRIORITY = ["hls", "yourupload", "pdrain", "mp4upload", "1fichier", "upnshare", "mega"];
+const SERVER_PRIORITY = ["mp4upload", "yourupload", "pdrain", "1fichier", "hls", "upnshare", "mega"];
 
 function getDownloadsDir() {
   const configuredPath = process.env.DOWNLOADS_DIR || "downloads";
