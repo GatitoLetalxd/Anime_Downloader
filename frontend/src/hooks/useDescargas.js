@@ -35,44 +35,135 @@ export const useDescargas = () => {
     const suggestedName = `${animeName}${epNum ? '-' + epNum : ''}.mp4`;
 
     try {
-      addOrUpdateDescarga(downloadId, {
-        title: nombreEpisodio,
-        url: urlEpisodio,
-        status: 'downloading',
-        progress: 100,
-        size: 'Nativo',
-      });
+      if ('showSaveFilePicker' in window) {
+        let handle;
+        try {
+          handle = await window.showSaveFilePicker({
+            suggestedName,
+            types: [{
+              description: 'Video MP4',
+              accept: { 'video/mp4': ['.mp4'] }
+            }]
+          });
+        } catch (pickerErr) {
+          // User cancelled file picker
+          if (pickerErr.name === 'AbortError') {
+            return null;
+          }
+          throw pickerErr;
+        }
 
-      const a = document.createElement('a');
-      a.href = downloadStreamUrl;
-      a.download = suggestedName;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 1000);
+        addOrUpdateDescarga(downloadId, {
+          title: nombreEpisodio,
+          url: urlEpisodio,
+          status: 'preparing',
+          progress: 0,
+          handle,
+          fileName: handle.name,
+        });
 
-      const completedData = {
-        downloadId,
-        title: nombreEpisodio,
-        url: urlEpisodio,
-        status: 'completed',
-        progress: 100,
-        size: 'Completado',
-        completedAt: Date.now(),
-        handle: null,
-        fileName: suggestedName,
-      };
+        const response = await fetch(downloadStreamUrl);
+        if (!response.ok) {
+          throw new Error(`Error en el servidor (${response.status})`);
+        }
 
-      addOrUpdateDescarga(downloadId, completedData);
-      await saveLocalDownload(completedData);
+        const contentLength = response.headers.get('content-length');
+        const totalBytes = contentLength ? parseInt(contentLength, 10) : null;
 
-      return downloadId;
+        const writable = await handle.createWritable();
+        const reader = response.body.getReader();
+
+        let downloadedBytes = 0;
+        let lastUpdateTime = Date.now();
+        let lastUpdateBytes = 0;
+
+        addOrUpdateDescarga(downloadId, {
+          status: 'downloading',
+          size: totalBytes ? `${(totalBytes / (1024 * 1024)).toFixed(1)} MB` : 'Desconocido',
+        });
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            await writable.write(value);
+            downloadedBytes += value.length;
+
+            const now = Date.now();
+            const elapsed = (now - lastUpdateTime) / 1000;
+
+            if (elapsed >= 0.5) {
+              const progress = totalBytes ? Math.round((downloadedBytes / totalBytes) * 100) : 50;
+              const bytesDiff = downloadedBytes - lastUpdateBytes;
+              const speed = bytesDiff / elapsed;
+              const speedMb = `${(speed / (1024 * 1024)).toFixed(2)} MB/s`;
+
+              addOrUpdateDescarga(downloadId, {
+                progress,
+                speedText: speedMb,
+                downloadedBytes,
+              });
+
+              lastUpdateTime = now;
+              lastUpdateBytes = downloadedBytes;
+            }
+          }
+
+          await writable.close();
+        } catch (streamErr) {
+          try { await writable.abort(); } catch (_e) {}
+          throw streamErr;
+        }
+
+        const completedData = {
+          downloadId,
+          title: nombreEpisodio,
+          url: urlEpisodio,
+          status: 'completed',
+          progress: 100,
+          size: `${(downloadedBytes / (1024 * 1024)).toFixed(1)} MB`,
+          completedAt: Date.now(),
+          handle,
+          fileName: handle.name,
+        };
+
+        addOrUpdateDescarga(downloadId, completedData);
+        await saveLocalDownload(completedData);
+        return downloadId;
+      } else {
+        // Direct browser fallback download
+        addOrUpdateDescarga(downloadId, {
+          title: nombreEpisodio,
+          url: urlEpisodio,
+          status: 'downloading',
+          progress: 100,
+          size: 'Nativo',
+        });
+
+        window.location.href = downloadStreamUrl;
+
+        const completedData = {
+          downloadId,
+          title: nombreEpisodio,
+          url: urlEpisodio,
+          status: 'completed',
+          progress: 100,
+          size: 'Descargado',
+          completedAt: Date.now(),
+          handle: null,
+          fileName: suggestedName,
+        };
+
+        addOrUpdateDescarga(downloadId, completedData);
+        await saveLocalDownload(completedData);
+        return downloadId;
+      }
     } catch (err) {
       console.error('Download error:', err);
       addOrUpdateDescarga(downloadId, {
         status: 'failed',
-        error: err.message || 'Error en descarga',
+        error: err.message || 'Error al descargar archivo',
       });
       return null;
     }
