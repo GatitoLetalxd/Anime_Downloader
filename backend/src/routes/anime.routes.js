@@ -1,8 +1,8 @@
 const express = require("express");
 const axios = require("axios");
-const ffmpegPath = require("ffmpeg-static");
 const ffmpeg = require("fluent-ffmpeg");
-ffmpeg.setFfmpegPath(ffmpegPath);
+const systemFfmpeg = process.platform === "win32" ? require("ffmpeg-static") : "ffmpeg";
+ffmpeg.setFfmpegPath(systemFfmpeg);
 const { requireApiKey } = require("../middlewares/auth");
 const { dailyRateLimit } = require("../middlewares/rate-limit");
 const animeService = require("../services/anime.service");

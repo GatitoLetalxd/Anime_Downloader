@@ -4,9 +4,9 @@ const { randomUUID } = require("node:crypto");
 const { pipeline } = require("node:stream/promises");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const ffmpegPath = require("ffmpeg-static");
 const ffmpeg = require("fluent-ffmpeg");
-ffmpeg.setFfmpegPath(ffmpegPath);
+const systemFfmpeg = process.platform === "win32" ? require("ffmpeg-static") : "ffmpeg";
+ffmpeg.setFfmpegPath(systemFfmpeg);
 const { ApiError } = require("../utils/api-error");
 const animeService = require("./anime.service");
 
