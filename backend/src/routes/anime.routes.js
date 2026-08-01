@@ -212,7 +212,13 @@ router.get(
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           Referer: finalReferer,
         },
+        validateStatus: (status) => status >= 200 && status < 400,
       });
+
+      const contentType = (response.headers["content-type"] || "").toLowerCase();
+      if (contentType.includes("text/html")) {
+        throw new ApiError(502, "El servidor del video devolvió HTML en lugar de un archivo de video");
+      }
 
       if (response.headers["content-length"]) {
         res.setHeader("Content-Length", response.headers["content-length"]);

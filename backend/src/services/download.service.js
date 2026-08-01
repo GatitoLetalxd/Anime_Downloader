@@ -792,6 +792,41 @@ async function resolveJKPlayerUrl(url, referer) {
   }
 }
 
+async function resolveMp4uploadUrl(url, referer) {
+  debugLog("Mp4upload", "Resolving URL", url);
+  try {
+    const embedUrl = url.includes("/embed-") ? url : url.replace("mp4upload.com/", "mp4upload.com/embed-").replace(".html", "") + ".html";
+    const { html } = await fetchHtmlWithHeaders(embedUrl, referer || "https://www.mp4upload.com/");
+    debugLog("Mp4upload", "Fetched HTML length", html.length);
+
+    const directMatch = html.match(/(https?:\/\/[^\s"'<>]+\.mp4[^\s"'<>]*)/i);
+    if (directMatch && directMatch[1] && isLikelyVideoUrl(directMatch[1])) {
+      debugLog("Mp4upload", "Found direct mp4", directMatch[1]);
+      return directMatch[1];
+    }
+
+    const scriptSrc = findFirstUrl(html, [
+      /player\.src\(["']([^"']+)["']\)/i,
+      /src\s*:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i,
+      /"file"\s*:\s*"([^"]+\.mp4[^"]*)"/i,
+      /eval\(function\(p,a,c,k,e,d\).*/i,
+    ]);
+    if (scriptSrc) {
+      debugLog("Mp4upload", "Found script src", scriptSrc);
+      return scriptSrc;
+    }
+
+    debugLog("Mp4upload", "Trying Puppeteer for mp4upload", embedUrl);
+    const puppeteerUrl = await resolveEmbedWithPuppeteer(embedUrl, "https://www.mp4upload.com/");
+    if (puppeteerUrl) {
+      return puppeteerUrl;
+    }
+  } catch (err) {
+    debugLog("Mp4upload", "Error", err.message);
+  }
+  return null;
+}
+
 async function resolveEmbedUrl(url, record, candidate) {
   if (!url) {
     return null;
@@ -836,6 +871,13 @@ async function resolveEmbedUrl(url, record, candidate) {
     debugLog("resolveEmbed", "Using YourUpload resolver", null);
     const resolved = await resolveYourUploadUrl(url, referer);
     if (!resolved) throw new Error("No se pudo resolver enlace directo en YourUpload");
+    return resolved;
+  }
+
+  if (/mp4upload/i.test(host)) {
+    debugLog("resolveEmbed", "Using Mp4upload resolver", null);
+    const resolved = await resolveMp4uploadUrl(url, referer);
+    if (!resolved) throw new Error("No se pudo resolver enlace directo en Mp4upload");
     return resolved;
   }
 
@@ -1256,13 +1298,15 @@ async function resolveEpisodeDirectUrl(episodeUrl, variant, preferredServer) {
     try {
       let finalUrl = resolveDirectDownloadUrl(candidate.url, candidate.server);
       finalUrl = await resolveEmbedUrl(finalUrl, { url: episodeUrl, quality: "1080p", downloadId: "temp" }, candidate);
-      if (finalUrl) {
+      if (finalUrl && isLikelyVideoUrl(finalUrl)) {
         return {
           directUrl: finalUrl,
           server: candidate.server,
           isHls: finalUrl.toLowerCase().includes(".m3u8") || /hls/i.test(candidate.server),
           referer: getRefererForUrl(candidate.url || episodeUrl || finalUrl),
         };
+      } else {
+        errors.push(`${candidate.server}: La URL resuelta no es un archivo de video directo válido (${finalUrl || 'nulo'})`);
       }
     } catch (error) {
       errors.push(`${candidate.server}: ${error.message}`);
