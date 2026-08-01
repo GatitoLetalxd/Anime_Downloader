@@ -326,7 +326,12 @@ function isLikelyVideoUrl(url) {
     "googletagmanager",
     "facebook.net",
     "beacon.min.js",
-    ".js?",
+    ".js",
+    ".css",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".svg",
     "analytics",
     "pixel",
     "bigbuckbunny",
@@ -341,8 +346,14 @@ function isLikelyVideoUrl(url) {
     }
   }
 
-  // Accept .mp4, .m3u8 (HLS), or direct video URLs
-  return /\.(mp4|m3u8)$/i.test(url) || lower.includes("video") || lower.includes("stream") || lower.includes(".mp4") || lower.includes(".m3u8");
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    if (pathname.includes('.mp4') || pathname.includes('.m3u8')) {
+      return true;
+    }
+  } catch (_e) {}
+
+  return /\.(mp4|m3u8)($|\?)/i.test(lower) || lower.includes('/m3u8/') || lower.includes('/video/');
 }
 
 async function fetchHtmlWithHeaders(url, referer) {
