@@ -192,7 +192,11 @@ router.get(
       ffmpeg(directUrl)
         .inputOptions([
           '-headers',
-          `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${finalReferer}\r\n`
+          `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${finalReferer}\r\n`,
+          '-reconnect', '1',
+          '-reconnect_at_eof', '1',
+          '-reconnect_streamed', '1',
+          '-reconnect_delay_max', '5'
         ])
         .outputOptions([
           "-map 0:v:0?",
@@ -200,6 +204,8 @@ router.get(
           "-c:v copy",
           "-c:a aac",
           "-b:a 192k",
+          "-af aresample=async=1000",
+          "-bsf:a aac_adtstoasc",
           "-avoid_negative_ts make_zero",
           "-movflags frag_keyframe+empty_moov"
         ])
