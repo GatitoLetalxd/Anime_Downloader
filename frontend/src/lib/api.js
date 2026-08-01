@@ -1,9 +1,20 @@
 import axios from 'axios';
 
-let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
-  API_URL = API_URL.replace('localhost', window.location.hostname);
-}
+export const getApiUrl = () => {
+  let url = import.meta.env.VITE_API_URL || '';
+  if (typeof window !== 'undefined') {
+    if (!url || url.includes('localhost') || url.includes('127.0.0.1')) {
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        url = window.location.origin;
+      } else {
+        url = 'http://localhost:3001';
+      }
+    }
+  }
+  return url || 'http://localhost:3001';
+};
+
+const API_URL = getApiUrl();
 const API_KEY = import.meta.env.VITE_API_KEY || 'luniel_api_secure_key_2026_9b8c7d6e5a4f3c2b';
 
 const client = axios.create({

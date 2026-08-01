@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useSocket } from './useSocket';
 import { saveLocalDownload } from '../lib/db';
 
+import { getApiUrl } from '../lib/api';
+
 const API_KEY = import.meta.env.VITE_API_KEY || 'luniel_api_secure_key_2026_9b8c7d6e5a4f3c2b';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -13,10 +15,7 @@ export const useDescargas = () => {
     // Generate a unique ID for this download
     const downloadId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
-      API_URL = API_URL.replace('localhost', window.location.hostname);
-    }
+    const API_URL = getApiUrl();
     const serverParam = opciones.preferredServer ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
     const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}&apiKey=${encodeURIComponent(API_KEY)}`;
 
