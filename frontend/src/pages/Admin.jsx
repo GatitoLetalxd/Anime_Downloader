@@ -446,90 +446,171 @@ export default function Admin() {
         ) : users.length === 0 ? (
           <p className="text-slate-400 text-xs text-center py-16">Sin usuarios que mostrar</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-white/10 bg-[#081631]">
-                  <th className="text-left px-6 py-3.5">Usuario</th>
-                  <th className="text-left px-6 py-3.5 hidden md:table-cell">Email</th>
-                  <th className="text-left px-6 py-3.5 hidden sm:table-cell">Rol</th>
-                  <th className="text-left px-6 py-3.5 hidden md:table-cell">Acceso</th>
-                  <th className="text-left px-6 py-3.5">Estado</th>
-                  <th className="text-right px-6 py-3.5">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#00f2ff]/5 transition-colors">
-                    <td className="px-6 py-3.5 font-bold text-white">@{u.username}</td>
-                    <td className="px-6 py-3.5 text-slate-300 hidden md:table-cell">{u.email}</td>
-                    <td className="px-6 py-3.5 hidden sm:table-cell">
-                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase ${
-                        u.role === 'admin'
-                          ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/30'
-                          : 'bg-white/5 text-slate-300'
-                      }`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3.5 hidden md:table-cell">
-                      {(() => {
-                        const status = getExpirationStatus(u);
-                        return <span className={status.style}>{status.text}</span>;
-                      })()}
-                    </td>
-                    <td className="px-6 py-3.5">
+          <>
+            {/* Desktop Table View (md and up) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-white/10 bg-[#081631]">
+                    <th className="text-left px-6 py-3.5">Usuario</th>
+                    <th className="text-left px-6 py-3.5">Email</th>
+                    <th className="text-left px-6 py-3.5">Rol</th>
+                    <th className="text-left px-6 py-3.5">Acceso</th>
+                    <th className="text-left px-6 py-3.5">Estado</th>
+                    <th className="text-right px-6 py-3.5">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {users.map((u) => (
+                    <tr key={u.id} className="hover:bg-[#00f2ff]/5 transition-colors">
+                      <td className="px-6 py-3.5 font-bold text-white">@{u.username}</td>
+                      <td className="px-6 py-3.5 text-slate-300">{u.email}</td>
+                      <td className="px-6 py-3.5">
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase ${
+                          u.role === 'admin'
+                            ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/30'
+                            : 'bg-white/5 text-slate-300'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {(() => {
+                          const status = getExpirationStatus(u);
+                          return <span className={status.style}>{status.text}</span>;
+                        })()}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md ${
+                          u.is_banned ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        }`}>
+                          {u.is_banned ? 'Suspendido' : 'Activo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingUser(u);
+                              setEditForm({
+                                username: u.username,
+                                email: u.email,
+                                password: '',
+                                role: u.role,
+                                expires_at: u.expires_at ? u.expires_at.split('T')[0] : ''
+                              });
+                            }}
+                            className="text-[#00f2ff] font-bold text-xs hover:underline cursor-pointer"
+                          >
+                            Editar
+                          </button>
+                          {u.is_banned ? (
+                            <button
+                              onClick={() => setModal({ type: 'unban', userId: u.id, username: u.username })}
+                              className="text-emerald-400 font-bold text-xs hover:underline cursor-pointer"
+                            >
+                              Reactivar
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setModal({ type: 'ban', userId: u.id, username: u.username })}
+                              className="text-amber-400 font-bold text-xs hover:underline cursor-pointer"
+                            >
+                              Suspender
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setModal({ type: 'delete', userId: u.id, username: u.username })}
+                            className="text-rose-400 font-bold text-xs hover:underline cursor-pointer"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View (< md) */}
+            <div className="block md:hidden divide-y divide-white/10">
+              {users.map((u) => {
+                const status = getExpirationStatus(u);
+                return (
+                  <div key={u.id} className="p-4 space-y-3 hover:bg-[#00f2ff]/5 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-white text-sm">@{u.username}</h3>
+                        <p className="text-xs text-slate-400">{u.email}</p>
+                      </div>
                       <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md ${
                         u.is_banned ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       }`}>
                         {u.is_banned ? 'Suspendido' : 'Activo'}
                       </span>
-                    </td>
-                    <td className="px-6 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingUser(u);
-                            setEditForm({
-                              username: u.username,
-                              email: u.email,
-                              password: '',
-                              role: u.role,
-                              expires_at: u.expires_at ? u.expires_at.split('T')[0] : ''
-                            });
-                          }}
-                          className="text-[#00f2ff] font-bold text-xs hover:underline cursor-pointer"
-                        >
-                          Editar
-                        </button>
-                        {u.is_banned ? (
-                          <button
-                            onClick={() => setModal({ type: 'unban', userId: u.id, username: u.username })}
-                            className="text-emerald-400 font-bold text-xs hover:underline cursor-pointer"
-                          >
-                            Reactivar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setModal({ type: 'ban', userId: u.id, username: u.username })}
-                            className="text-amber-400 font-bold text-xs hover:underline cursor-pointer"
-                          >
-                            Suspender
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setModal({ type: 'delete', userId: u.id, username: u.username })}
-                          className="text-rose-400 font-bold text-xs hover:underline cursor-pointer"
-                        >
-                          Eliminar
-                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-[#030b1e]/60 p-2.5 rounded-xl border border-white/5">
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Rol</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase inline-block mt-0.5 ${
+                          u.role === 'admin'
+                            ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/30'
+                            : 'bg-white/5 text-slate-300'
+                        }`}>
+                          {u.role}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Acceso</span>
+                        <span className={`text-xs mt-0.5 inline-block ${status.style}`}>{status.text}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-1 border-t border-white/5">
+                      <button
+                        onClick={() => {
+                          setEditingUser(u);
+                          setEditForm({
+                            username: u.username,
+                            email: u.email,
+                            password: '',
+                            role: u.role,
+                            expires_at: u.expires_at ? u.expires_at.split('T')[0] : ''
+                          });
+                        }}
+                        className="text-[#00f2ff] font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        Editar
+                      </button>
+                      {u.is_banned ? (
+                        <button
+                          onClick={() => setModal({ type: 'unban', userId: u.id, username: u.username })}
+                          className="text-emerald-400 font-bold text-xs hover:underline cursor-pointer"
+                        >
+                          Reactivar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setModal({ type: 'ban', userId: u.id, username: u.username })}
+                          className="text-amber-400 font-bold text-xs hover:underline cursor-pointer"
+                        >
+                          Suspender
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setModal({ type: 'delete', userId: u.id, username: u.username })}
+                        className="text-rose-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

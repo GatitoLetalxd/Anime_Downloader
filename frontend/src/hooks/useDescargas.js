@@ -17,7 +17,8 @@ export const useDescargas = () => {
     if (typeof window !== 'undefined' && API_URL.includes('localhost')) {
       API_URL = API_URL.replace('localhost', window.location.hostname);
     }
-    const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}&apiKey=${encodeURIComponent(API_KEY)}`;
+    const serverParam = opciones.preferredServer ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
+    const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}&apiKey=${encodeURIComponent(API_KEY)}`;
 
     const slug = urlEpisodio.split('/').filter(Boolean).pop() || 'anime';
     const suggestedName = `${slug}.mp4`;
@@ -171,11 +172,12 @@ export const useDescargas = () => {
 
   const agregarTodos = async (episodios, opciones = {}) => {
     setLoading(true);
+    const delayMs = episodios.length > 12 ? 3000 : 1500;
     for (let i = 0; i < episodios.length; i++) {
       const ep = episodios[i];
       await agregarDescarga(ep.url, ep.nombre || `Episodio ${ep.numero}`, opciones);
       if (i < episodios.length - 1) {
-        await sleep(1500);
+        await sleep(delayMs);
       }
     }
     setLoading(false);

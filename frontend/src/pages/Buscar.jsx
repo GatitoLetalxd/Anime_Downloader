@@ -331,6 +331,129 @@ export const Buscar = () => {
     }
   };
 
+  // Download modal state
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [pendingDownload, setPendingDownload] = useState(null);
+  const [availableVariants, setAvailableVariants] = useState({ SUB: false, DUB: false });
+  const [checkingVariants, setCheckingVariants] = useState(false);
+  const [dlVariant, setDlVariant] = useState('SUB');
+  const [dlServer, setDlServer] = useState('');
+  const [episodeDetails, setEpisodeDetails] = useState(null);
+  const [detectedServers, setDetectedServers] = useState([]);
+
+  const openDownloadModal = async (type, urls = []) => {
+    setPendingDownload({ type, urls });
+    setDlVariant('SUB');
+    setDlServer('');
+    setEpisodeDetails(null);
+    setDetectedServers([]);
+    setCheckingVariants(true);
+    setShowDownloadModal(true);
+
+    // Detect available variants & servers from first episode
+    try {
+      const firstEp = animeInfo?.episodios?.[0];
+      if (firstEp) {
+        const epData = await obtenerEnlacesEpisodio(firstEp.url);
+        setEpisodeDetails(epData);
+
+        const streamSub = epData?.streamLinks?.SUB || epData?.servers?.sub || [];
+        const streamDub = epData?.streamLinks?.DUB || epData?.servers?.dub || [];
+        const downloadSub = epData?.downloadLinks?.SUB || [];
+        const downloadDub = epData?.downloadLinks?.DUB || [];
+        const variants = epData?.variants || {};
+
+        const hasSub = !!variants.SUB || streamSub.length > 0 || downloadSub.length > 0;
+        const hasDub = !!variants.DUB || streamDub.length > 0 || downloadDub.length > 0;
+
+        setAvailableVariants({
+          SUB: hasSub,
+          DUB: hasDub,
+        });
+
+        if (hasDub && !hasSub) setDlVariant('DUB');
+        else setDlVariant('SUB');
+
+        // Dynamically build detected servers from actual episode links
+        const serverMap = new Map();
+        const allLinks = [...streamSub, ...streamDub, ...downloadSub, ...downloadDub];
+        allLinks.forEach((l) => {
+          if (!l || !l.server) return;
+          const name = l.server.trim();
+          const key = name.toLowerCase();
+          if (!serverMap.has(key)) {
+            let label = name;
+            if (key.includes('hls')) label = 'HLS (Streaming HLS)';
+            else if (key.includes('mp4upload')) label = 'MP4Upload';
+            else if (key.includes('yourupload')) label = 'YourUpload';
+            else if (key.includes('pdrain')) label = 'PDrain';
+            else if (key.includes('1fichier')) label = '1Fichier';
+            else if (key.includes('mega')) label = 'Mega';
+            serverMap.set(key, { value: key, label });
+          }
+        });
+
+        setDetectedServers(Array.from(serverMap.values()));
+      }
+    } catch (err) {
+      console.error('Error checking variants:', err);
+      setAvailableVariants({ SUB: true, DUB: false });
+    } finally {
+      setCheckingVariants(false);
+    }
+  };
+
+  const serverOptions = [
+    { value: '', label: 'Automático (HLS / Mejor Servidor)' },
+    ...(detectedServers.length > 0
+      ? detectedServers
+      : [
+          { value: 'hls', label: 'HLS (Streaming)' },
+          { value: 'mp4upload', label: 'MP4Upload' },
+          { value: 'yourupload', label: 'YourUpload' },
+          { value: 'pdrain', label: 'PDrain' },
+          { value: '1fichier', label: '1Fichier' },
+          { value: 'mega', label: 'Mega' },
+        ]),
+  ];
+
+  const isVariantAvailable = (variantKey) => {
+    if (!episodeDetails) return availableVariants[variantKey];
+
+    const stream = variantKey === 'SUB'
+      ? (episodeDetails?.streamLinks?.SUB || episodeDetails?.servers?.sub || [])
+      : (episodeDetails?.streamLinks?.DUB || episodeDetails?.servers?.dub || []);
+    const download = variantKey === 'SUB'
+      ? (episodeDetails?.downloadLinks?.SUB || [])
+      : (episodeDetails?.downloadLinks?.DUB || []);
+
+    if (!dlServer) {
+      return stream.length > 0 || download.length > 0 || (variantKey === 'SUB' ? !!episodeDetails?.variants?.SUB : !!episodeDetails?.variants?.DUB);
+    }
+
+    const matchServer = (l) => (l?.server || '').toLowerCase().includes(dlServer.toLowerCase());
+    return stream.some(matchServer) || download.some(matchServer);
+  };
+
+  const confirmDownload = () => {
+    if (!pendingDownload || !animeInfo) return;
+    setShowDownloadModal(false);
+
+    const opciones = { variant: dlVariant };
+    if (dlServer) opciones.preferredServer = dlServer;
+
+    if (pendingDownload.type === 'all') {
+      triggerToastAndRedirect(animeInfo.episodios.length);
+      agregarTodos(animeInfo.episodios, opciones);
+    } else {
+      const episodesToDownload = animeInfo.episodios.filter((ep) =>
+        pendingDownload.urls.includes(ep.url)
+      );
+      triggerToastAndRedirect(episodesToDownload.length);
+      agregarTodos(episodesToDownload, opciones);
+    }
+  };
+
   const triggerToastAndRedirect = (count) => {
     setToastMessage(`${count} episodio${count > 1 ? 's' : ''} agregado${count > 1 ? 's' : ''} a la cola.`);
     setShowToast(true);
@@ -342,17 +465,12 @@ export const Buscar = () => {
 
   const handleDownloadSelected = async (urls) => {
     if (urls.length === 0 || !animeInfo) return;
-    const episodesToDownload = animeInfo.episodios.filter((ep) =>
-      urls.includes(ep.url)
-    );
-    triggerToastAndRedirect(episodesToDownload.length);
-    agregarTodos(episodesToDownload);
+    openDownloadModal('selected', urls);
   };
 
   const handleDownloadAll = () => {
     if (!animeInfo || !animeInfo.episodios || animeInfo.episodios.length === 0) return;
-    triggerToastAndRedirect(animeInfo.episodios.length);
-    agregarTodos(animeInfo.episodios);
+    openDownloadModal('all');
   };
 
   return (
@@ -365,6 +483,128 @@ export const Buscar = () => {
             ✓
           </div>
           <span className="text-xs font-extrabold tracking-wide">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Download Options Modal */}
+      {showDownloadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4 animate-fade-in">
+          <div className="bg-[#0d1f42] border border-[#00f2ff]/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5">
+            <div className="flex justify-between items-center pb-2 border-b border-white/10">
+              <h2 className="text-sm font-black text-white flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#00f2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Opciones de Descarga
+              </h2>
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-rose-500 hover:text-white flex items-center justify-center text-slate-400 font-bold transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Episode count */}
+            <div className="text-xs text-slate-300 font-medium">
+              {pendingDownload?.type === 'all'
+                ? `Descargando todos los ${animeInfo?.episodios?.length || 0} episodios`
+                : `Descargando ${pendingDownload?.urls?.length || 0} episodio(s) seleccionado(s)`
+              }
+            </div>
+
+            {/* Language Selection */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Idioma</label>
+              {checkingVariants ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="w-4 h-4 border-2 border-t-[#00f2ff] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
+                  Detectando idiomas disponibles...
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDlVariant('SUB')}
+                    disabled={!isVariantAvailable('SUB')}
+                    className={`flex-1 py-3 rounded-2xl text-xs font-black tracking-wide transition-all border cursor-pointer flex items-center justify-center gap-2 ${
+                      dlVariant === 'SUB'
+                        ? 'bg-[#00f2ff] text-black border-[#00f2ff] glow-cyan shadow-lg'
+                        : isVariantAvailable('SUB')
+                          ? 'bg-[#081631] text-slate-200 border-white/10 hover:border-[#00f2ff]/50'
+                          : 'bg-[#081631]/50 text-slate-500 border-white/5 cursor-not-allowed'
+                    }`}
+                  >
+                    <span>🇯🇵</span>
+                    <span>Subtitulado</span>
+                    {!isVariantAvailable('SUB') && <span className="text-[9px] opacity-60">(No disp.)</span>}
+                  </button>
+
+                  <button
+                    onClick={() => setDlVariant('DUB')}
+                    disabled={!isVariantAvailable('DUB')}
+                    className={`flex-1 py-3 rounded-2xl text-xs font-black tracking-wide transition-all border cursor-pointer flex items-center justify-center gap-2 ${
+                      dlVariant === 'DUB'
+                        ? 'bg-[#00f2ff] text-black border-[#00f2ff] glow-cyan shadow-lg'
+                        : isVariantAvailable('DUB')
+                          ? 'bg-[#081631] text-slate-200 border-white/10 hover:border-[#00f2ff]/50'
+                          : 'bg-[#081631]/50 text-slate-500 border-white/5 cursor-not-allowed'
+                    }`}
+                  >
+                    <span>🇪🇸</span>
+                    <span>Español Latino</span>
+                    {!isVariantAvailable('DUB') && <span className="text-[9px] opacity-60">(No disp.)</span>}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Server Selection */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Servidor de Descarga</label>
+              <select
+                value={dlServer}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDlServer(val);
+                  // Ensure selected variant is available for this server
+                  if (val) {
+                    if (dlVariant === 'SUB' && !isVariantAvailable('SUB')) {
+                      if (isVariantAvailable('DUB')) setDlVariant('DUB');
+                    } else if (dlVariant === 'DUB' && !isVariantAvailable('DUB')) {
+                      if (isVariantAvailable('SUB')) setDlVariant('SUB');
+                    }
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#030b1e] border border-white/10 text-white text-xs font-bold focus:outline-none focus:border-[#00f2ff] cursor-pointer"
+              >
+                {serverOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-[#081631] text-white">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500">
+                Predeterminado: Automático (prioriza HLS / el servidor más óptimo).
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-all border border-white/10 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDownload}
+                disabled={checkingVariants || (!isVariantAvailable('SUB') && !isVariantAvailable('DUB'))}
+                className="flex-1 py-3 rounded-xl bg-[#00f2ff] hover:bg-[#70f3ff] text-black font-black text-xs uppercase tracking-wider transition-all glow-cyan cursor-pointer disabled:opacity-50"
+              >
+                Iniciar Descarga
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
