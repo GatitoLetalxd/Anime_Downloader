@@ -1,51 +1,63 @@
-/**
- * seed-admin.js — Creates the first admin user.
- * Usage: node src/db/seed-admin.js
- */
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
 
 const readline = require("readline");
 const bcrypt = require("bcryptjs");
-const { pool, query } = require("./index");
+const { connect, disconnect } = require("./index");
+const { User } = require("./models");
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+let rl = null;
+
+function ask(question) {
+  if (!rl) {
+    rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  }
+  return new Promise((resolve) => rl.question(question, resolve));
+}
+
+function closePrompt() {
+  if (rl) rl.close();
+}
 
 async function seedAdmin() {
-  console.log("\n🌱  LunielAnime — Crear primer administrador\n");
+  const [argUsername, argEmail, argPassword] = process.argv.slice(2);
 
-  const username = (await ask("Username del admin: ")).trim();
-  const email = (await ask("Email del admin: ")).trim();
-  const password = (await ask("Contraseña del admin: ")).trim();
+  const username = (argUsername || (await ask("Username del admin: "))).trim();
+  const email = (argEmail || (await ask("Email del admin: "))).trim().toLowerCase();
+  const password = (argPassword || (await ask("Contraseña del admin: "))).trim();
 
   if (!username || !email || !password) {
-    console.error("❌ Todos los campos son obligatorios.");
+    console.error("Todos los campos son obligatorios.");
+    console.error("Uso: node src/db/seed-admin.js [username] [email] [password]");
+    closePrompt();
     process.exit(1);
   }
 
   const hash = await bcrypt.hash(password, 12);
 
   try {
-    const result = await query(
-      `INSERT INTO users (username, email, password, role)
-       VALUES ($1, $2, $3, 'admin')
-       ON CONFLICT (email) DO UPDATE SET role = 'admin', password = $3
-       RETURNING id, username, email, role`,
-      [username, email, hash]
+    await connect();
+
+    const admin = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: { role: "admin", password: hash },
+        $setOnInsert: { username, email, created_at: new Date() },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    const admin = result.rows[0];
-    console.log(`\n✅ Admin creado exitosamente:`);
-    console.log(`   ID:       ${admin.id}`);
-    console.log(`   Username: ${admin.username}`);
-    console.log(`   Email:    ${admin.email}`);
-    console.log(`   Role:     ${admin.role}\n`);
+    console.log(`ID:       ${admin._id}`);
+    console.log(`Username: ${admin.username}`);
+    console.log(`Email:    ${admin.email}`);
+    console.log(`Role:     ${admin.role}`);
   } catch (err) {
-    console.error("❌ Error:", err.message);
+    console.error("Error:", err.message);
+    closePrompt();
+    await disconnect().catch(() => {});
     process.exit(1);
   } finally {
-    rl.close();
-    await pool.end();
+    closePrompt();
+    await disconnect().catch(() => {});
   }
 }
 
