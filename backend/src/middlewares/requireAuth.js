@@ -1,6 +1,6 @@
 const { verifyAccessToken } = require("../utils/jwt");
 const { ApiError } = require("../utils/api-error");
-const db = require("../db");
+const { User } = require("../db/models");
 
 /**
  * Middleware that verifies the JWT access token and attaches req.user.
@@ -18,16 +18,13 @@ async function requireAuth(req, _res, next) {
     const decoded = verifyAccessToken(token);
 
     // Fetch fresh user data (checks is_banned & expires_at in real time)
-    const result = await db.query(
-      "SELECT id, username, email, role, avatar, is_banned, expires_at FROM users WHERE id = $1",
-      [decoded.id]
+    const user = await User.findById(decoded.id).select(
+      "username email role avatar is_banned expires_at"
     );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return next(new ApiError(401, "Usuario no encontrado"));
     }
-
-    const user = result.rows[0];
 
     if (user.is_banned) {
       return next(new ApiError(403, "Tu cuenta está suspendida. Contacta al administrador."));
@@ -37,10 +34,18 @@ async function requireAuth(req, _res, next) {
       return next(new ApiError(403, "Tu acceso ha expirado. Por favor, comunícate con el administrador."));
     }
 
-    req.user = user;
+    req.user = {
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      is_banned: user.is_banned,
+      expires_at: user.expires_at,
+    };
 
     // Update last_seen asynchronously (fire and forget)
-    db.query("UPDATE users SET last_seen = NOW() WHERE id = $1", [user.id]).catch(() => {});
+    User.updateOne({ _id: user._id }, { $set: { last_seen: new Date() } }).catch(() => {});
 
     next();
   } catch (err) {
