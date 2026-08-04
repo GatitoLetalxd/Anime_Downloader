@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const db = require("../db");
+const { User } = require("../db/models");
 const { ApiError } = require("../utils/api-error");
 const { requireAuth } = require("../middlewares/requireAuth");
 const {
@@ -27,16 +27,13 @@ router.post(
       throw new ApiError(400, "Email y contraseña son requeridos");
     }
 
-    const result = await db.query(
-      "SELECT id, username, email, password, role, avatar, is_banned, expires_at FROM users WHERE email = $1",
-      [email.toLowerCase().trim()]
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+      "+password username email role avatar is_banned expires_at"
     );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       throw new ApiError(401, "Credenciales inválidas");
     }
-
-    const user = result.rows[0];
 
     if (user.is_banned) {
       throw new ApiError(403, "Tu cuenta está suspendida. Contacta al administrador.");
@@ -51,12 +48,13 @@ router.post(
       throw new ApiError(401, "Credenciales inválidas");
     }
 
-    const tokenPayload = { id: user.id, username: user.username, role: user.role };
+    const userId = user._id.toString();
+    const tokenPayload = { id: userId, username: user.username, role: user.role };
     const accessToken = signAccessToken(tokenPayload);
-    const refreshToken = signRefreshToken({ id: user.id });
+    const refreshToken = signRefreshToken({ id: userId });
 
     // Update last_seen
-    await db.query("UPDATE users SET last_seen = NOW() WHERE id = $1", [user.id]);
+    await User.updateOne({ _id: user._id }, { $set: { last_seen: new Date() } });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
 
@@ -64,7 +62,7 @@ router.post(
       success: true,
       accessToken,
       user: {
-        id: user.id,
+        id: userId,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -92,16 +90,13 @@ router.post(
       throw new ApiError(401, "Refresh token inválido o expirado");
     }
 
-    const result = await db.query(
-      "SELECT id, username, email, role, avatar, is_banned, expires_at FROM users WHERE id = $1",
-      [decoded.id]
+    const user = await User.findById(decoded.id).select(
+      "username email role avatar is_banned expires_at"
     );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       throw new ApiError(401, "Usuario no encontrado");
     }
-
-    const user = result.rows[0];
 
     if (user.is_banned) {
       throw new ApiError(403, "Tu cuenta está suspendida.");
@@ -111,13 +106,14 @@ router.post(
       throw new ApiError(403, "Tu acceso ha expirado. Por favor, comunícate con el administrador.");
     }
 
-    const accessToken = signAccessToken({ id: user.id, username: user.username, role: user.role });
+    const userId = user._id.toString();
+    const accessToken = signAccessToken({ id: userId, username: user.username, role: user.role });
 
     res.status(200).json({
       success: true,
       accessToken,
       user: {
-        id: user.id,
+        id: userId,
         username: user.username,
         email: user.email,
         role: user.role,
