@@ -161,6 +161,10 @@ gantt
 | **RF-28** | Eliminar usuario | El sistema debe permitir eliminar una cuenta junto con sus favoritos e historial. | Media |
 | **RF-29** | Control de vigencia | El sistema debe denegar el acceso a las cuentas cuya fecha de vencimiento haya pasado, salvo a los administradores. | Alta |
 | **RF-30** | Protección por rol | El sistema debe restringir las funciones administrativas a los usuarios con rol de administrador. | Alta |
+| **RF-31** | Reproducción sin anuncios | El sistema debe reproducir el episodio en un reproductor propio, sirviendo el video directamente desde el backend sin cargar la página del proveedor ni su publicidad. | Alta |
+| **RF-32** | Selección de servidor compatible | El sistema debe priorizar automáticamente los servidores que permiten la reproducción incrustada y descartar los que la bloquean. | Alta |
+| **RF-33** | Alternancia de reproductor | El sistema debe permitir cambiar entre el reproductor propio y el del proveedor, y ofrecer esa alternativa cuando la reproducción directa falle. | Media |
+| **RF-34** | Avance y retroceso | El sistema debe permitir desplazarse dentro del episodio durante la reproducción directa. | Media |
 
 ---
 
@@ -190,6 +194,10 @@ gantt
 | **RNF-20** | Portabilidad | El sistema debe operar sobre Node.js 18 o superior en servidores Linux. |
 | **RNF-21** | Escalabilidad | El servicio debe admitir el registro de nuevos proveedores sin modificar la capa de rutas. |
 | **RNF-22** | Compatibilidad | El sitio debe funcionar en las versiones actuales de los navegadores de escritorio y móviles. |
+| **RNF-23** | Compatibilidad | La reproducción debe funcionar sin depender de bloqueadores de publicidad instalados en el navegador del usuario. |
+| **RNF-24** | Seguridad | El flujo de video debe autenticarse mediante la cookie de sesión HTTP-Only, sin exponer claves ni tokens en la URL. |
+| **RNF-25** | Rendimiento | La resolución del enlace de video no debe superar los diez segundos antes de iniciar la reproducción. |
+| **RNF-26** | Escalabilidad | El servidor debe liberar el proceso de retransmisión en cuanto el usuario abandone la reproducción, para no acumular flujos abiertos. |
 
 ---
 
@@ -330,6 +338,7 @@ classDiagram
         +buscar(q, genero) Anime[]
         +obtenerInfo(url) Anime
         +obtenerEpisodio(url) Enlace[]
+        +reproducir(url, variante, servidor) FlujoVideo
         +descargar(url, variante) Descarga
         +descargarLote(urls) Descarga[]
     }
@@ -374,6 +383,10 @@ classDiagram
         +verificar(request) Boolean
     }
 
+    class RequireSessionCookie {
+        +verificar(cookie) User
+    }
+
     User "1" --o "0..*" Favorite : posee
     User "1" --o "0..*" WatchProgress : registra
 
@@ -390,6 +403,7 @@ classDiagram
 
     AnimeController ..> AnimeService : delega
     AnimeController ..> DownloadService : delega
+    AnimeController ..> RequireSessionCookie : usa en reproduccion
     AnimeService o-- IProveedor : contiene
 
     IProveedor <|.. AnimeAv1Service
@@ -587,7 +601,60 @@ sequenceDiagram
     end
 ```
 
-### 9.4 Suspensión de una cuenta por el administrador
+### 9.4 Reproducción sin anuncios
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant F as Frontend
+    participant RC as RequireSessionCookie
+    participant A as API
+    participant D as DownloadService
+    participant P as Proveedor
+    participant CDN as Servidor de video
+
+    U->>F: Selecciona el episodio
+    F->>F: Ordena servidores por compatibilidad
+    F->>A: GET /api/v1/anime/watch (cookie de sesión)
+    A->>RC: Verifica la cookie HTTP-Only
+
+    alt Sin sesión válida
+        RC-->>F: 401 Se requiere una sesión activa
+        F-->>U: Solicita iniciar sesión
+    else Sesión válida
+        A->>D: resolverEnlaceDirecto(url, variante, servidor)
+        D->>P: Consulta el embed del proveedor
+        P-->>D: Enlace directo del video
+        D-->>A: URL directa y referente requerido
+
+        alt Video en formato HLS
+            A->>CDN: Solicita los segmentos con el referente correcto
+            CDN-->>A: Segmentos del video
+            A->>A: FFmpeg convierte a MP4 fragmentado
+        else Video en formato MP4
+            A->>CDN: Solicita el archivo con Range y referente
+            CDN-->>A: 206 Contenido parcial
+        end
+
+        A-->>F: Flujo de video sin publicidad
+        F-->>U: Reproduce en el reproductor propio
+
+        opt El usuario adelanta el video
+            F->>A: Nueva petición con cabecera Range
+            A->>CDN: Reenvía el rango solicitado
+            CDN-->>A: 206 Contenido parcial
+            A-->>F: Fragmento solicitado
+        end
+
+        opt El usuario cierra la reproducción
+            F->>A: Cierra la conexión
+            A->>A: Libera el proceso de retransmisión
+        end
+    end
+```
+
+### 9.5 Suspensión de una cuenta por el administrador
 
 ```mermaid
 sequenceDiagram
@@ -719,12 +786,14 @@ graph TB
 | Caída del servicio de descargas por consumo de recursos | Medio | Media | Reinicio automático mediante PM2 y límite de caché de la base de datos |
 | Clave de API expuesta en el paquete del frontend | Medio | Alta | Rotar la clave y restringir por origen de la petición |
 | Pérdida de datos de usuarios | Alto | Baja | Copias de seguridad periódicas de la base de datos |
+| Saturación del ancho de banda por la reproducción directa | Alto | Media | El video se retransmite por el servidor: vigilar el consumo y limitar las reproducciones simultáneas |
+| Bloqueo del reproductor propio por el proveedor del video | Medio | Media | Conservar el reproductor del proveedor como alternativa seleccionable |
 
 ---
 
 ## 13. Conclusiones
 
-El sistema ANIME FLV cubre los treinta requerimientos funcionales previstos y se encuentra desplegado y operativo en el dominio institucional. La arquitectura por servicios independientes para cada proveedor permite absorber los cambios frecuentes de los sitios de origen sin afectar al resto del sistema, que es el riesgo principal identificado para este proyecto.
+El sistema ANIME FLV cubre los treinta y cuatro requerimientos funcionales previstos y se encuentra desplegado y operativo en el dominio institucional. La arquitectura por servicios independientes para cada proveedor permite absorber los cambios frecuentes de los sitios de origen sin afectar al resto del sistema, que es el riesgo principal identificado para este proyecto.
 
 La migración del motor de base de datos a MongoDB se ejecutó conservando el contrato del API, de modo que el frontend no requirió modificaciones. Quedan pendientes de elaboración el manual de usuario y el manual técnico.
 
