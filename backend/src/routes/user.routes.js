@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const db = require("../db");
+const { User, Favorite, WatchProgress } = require("../db/models");
 const { ApiError } = require("../utils/api-error");
 const { requireAuth } = require("../middlewares/requireAuth");
 
@@ -17,11 +17,8 @@ router.use(requireAuth);
 router.get(
   "/favorites",
   asyncHandler(async (req, res) => {
-    const result = await db.query(
-      "SELECT id, anime_url, anime_title, anime_cover, provider, added_at FROM favorites WHERE user_id = $1 ORDER BY added_at DESC",
-      [req.user.id]
-    );
-    res.status(200).json({ success: true, data: result.rows });
+    const favorites = await Favorite.find({ user_id: req.user.id }).sort({ added_at: -1 });
+    res.status(200).json({ success: true, data: favorites.map((doc) => doc.toJSON()) });
   })
 );
 
@@ -35,19 +32,21 @@ router.post(
       throw new ApiError(400, "anime_url y anime_title son requeridos");
     }
 
-    const result = await db.query(
-      `INSERT INTO favorites (user_id, anime_url, anime_title, anime_cover, provider)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (user_id, anime_url) DO NOTHING
-       RETURNING *`,
-      [req.user.id, anime_url, anime_title, anime_cover || null, provider || null]
-    );
+    const existing = await Favorite.findOne({ user_id: req.user.id, anime_url });
 
-    if (result.rows.length === 0) {
+    if (existing) {
       return res.status(200).json({ success: true, message: "Ya estaba en favoritos" });
     }
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const favorite = await Favorite.create({
+      user_id: req.user.id,
+      anime_url,
+      anime_title,
+      anime_cover: anime_cover || null,
+      provider: provider || null,
+    });
+
+    res.status(201).json({ success: true, data: favorite.toJSON() });
   })
 );
 
@@ -61,10 +60,7 @@ router.delete(
       throw new ApiError(400, "anime_url es requerido");
     }
 
-    await db.query(
-      "DELETE FROM favorites WHERE user_id = $1 AND anime_url = $2",
-      [req.user.id, anime_url]
-    );
+    await Favorite.deleteOne({ user_id: req.user.id, anime_url });
 
     res.status(200).json({ success: true, message: "Eliminado de favoritos" });
   })
@@ -74,12 +70,8 @@ router.delete(
 router.get(
   "/progress",
   asyncHandler(async (req, res) => {
-    const result = await db.query(
-      `SELECT id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, updated_at
-       FROM watch_progress WHERE user_id = $1 ORDER BY updated_at DESC`,
-      [req.user.id]
-    );
-    res.status(200).json({ success: true, data: result.rows });
+    const progress = await WatchProgress.find({ user_id: req.user.id }).sort({ updated_at: -1 });
+    res.status(200).json({ success: true, data: progress.map((doc) => doc.toJSON()) });
   })
 );
 
@@ -93,20 +85,23 @@ router.post(
       throw new ApiError(400, "anime_url, anime_title, episode_num y episode_url son requeridos");
     }
 
-    const result = await db.query(
-      `INSERT INTO watch_progress (user_id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-       ON CONFLICT (user_id, anime_url) DO UPDATE
-         SET episode_num = EXCLUDED.episode_num,
-             episode_url = EXCLUDED.episode_url,
-             anime_cover = EXCLUDED.anime_cover,
-             provider    = EXCLUDED.provider,
-             updated_at  = NOW()
-       RETURNING *`,
-      [req.user.id, anime_url, anime_title, anime_cover || null, provider || null, episode_num, episode_url]
+    const entry = await WatchProgress.findOneAndUpdate(
+      { user_id: req.user.id, anime_url },
+      {
+        $set: {
+          anime_title,
+          anime_cover: anime_cover || null,
+          provider: provider || null,
+          episode_num,
+          episode_url,
+          updated_at: new Date(),
+        },
+        $setOnInsert: { user_id: req.user.id, anime_url },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json({ success: true, data: result.rows[0] });
+    res.status(200).json({ success: true, data: entry.toJSON() });
   })
 );
 
@@ -120,10 +115,7 @@ router.delete(
       throw new ApiError(400, "anime_url es requerido");
     }
 
-    await db.query(
-      "DELETE FROM watch_progress WHERE user_id = $1 AND anime_url = $2",
-      [req.user.id, anime_url]
-    );
+    await WatchProgress.deleteOne({ user_id: req.user.id, anime_url });
 
     res.status(200).json({ success: true, message: "Progreso eliminado" });
   })
@@ -144,12 +136,22 @@ router.patch(
       throw new ApiError(400, "Nombre de avatar inválido");
     }
 
-    const result = await db.query(
-      "UPDATE users SET avatar = $1 WHERE id = $2 RETURNING id, username, email, role, avatar",
-      [avatar, req.user.id]
-    );
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { avatar } },
+      { new: true }
+    ).select("username email role avatar");
 
-    res.status(200).json({ success: true, user: result.rows[0] });
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    });
   })
 );
 
@@ -172,12 +174,7 @@ router.patch(
     }
 
     // Fetch current hashed password
-    const result = await db.query(
-      "SELECT password FROM users WHERE id = $1",
-      [req.user.id]
-    );
-
-    const user = result.rows[0];
+    const user = await User.findById(req.user.id).select("+password");
     const passwordMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!passwordMatch) {
@@ -185,7 +182,7 @@ router.patch(
     }
 
     const hashed = await bcrypt.hash(newPassword, 12);
-    await db.query("UPDATE users SET password = $1 WHERE id = $2", [hashed, req.user.id]);
+    await User.updateOne({ _id: req.user.id }, { $set: { password: hashed } });
 
     res.status(200).json({ success: true, message: "Contraseña actualizada correctamente" });
   })
