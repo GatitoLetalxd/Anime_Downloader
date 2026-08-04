@@ -7,6 +7,7 @@ const cors = require("cors");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const socketUtil = require("./utils/socket");
+const db = require("./db");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const animeRoutes = require("./routes/anime.routes");
@@ -69,6 +70,10 @@ app.use((_req, _res, next) => {
 });
 
 app.use((error, _req, res, _next) => {
+  if (error.name === "CastError" && error.kind === "ObjectId") {
+    return res.status(404).json({ success: false, message: "Recurso no encontrado" });
+  }
+
   const statusCode = error.statusCode || 500;
 
   const response = {
@@ -86,9 +91,19 @@ app.use((error, _req, res, _next) => {
 const server = http.createServer(app);
 socketUtil.init(server);
 
-server.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Anime1v API listening on http://localhost:${port}`);
-});
+db.connect()
+  .then(() => {
+    // eslint-disable-next-line no-console
+    console.log("MongoDB conectado");
+    server.listen(port, () => {
+      // eslint-disable-next-line no-console
+      console.log(`Anime1v API listening on http://localhost:${port}`);
+    });
+  })
+  .catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error("No se pudo conectar a MongoDB:", err.message);
+    process.exit(1);
+  });
 
 // Trigger reload for new API Keys configuration
