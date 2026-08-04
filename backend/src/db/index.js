@@ -1,37 +1,42 @@
-const { Pool } = require("pg");
+const mongoose = require("mongoose");
 
-const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 5432,
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || "lunielanime",
-});
+mongoose.set("strictQuery", true);
 
-pool.on("error", (err) => {
-  console.error("[DB] Unexpected error on idle client", err);
-});
+function getMongoUri() {
+  if (process.env.MONGO_URI) return process.env.MONGO_URI;
 
-/**
- * Execute a parameterised SQL query.
- * @param {string} text   - SQL query string
- * @param {Array}  params - Query parameters
- */
-async function query(text, params) {
-  const start = Date.now();
-  const res = await pool.query(text, params);
-  const duration = Date.now() - start;
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[DB] query: ${text.slice(0, 80)} — ${duration}ms`);
+  const host = process.env.DB_HOST || "localhost";
+  const port = Number(process.env.DB_PORT) || 27017;
+  const name = process.env.DB_NAME || "lunielanime";
+  const user = process.env.DB_USERNAME;
+  const password = process.env.DB_PASSWORD;
+
+  if (user && password) {
+    const credentials = `${encodeURIComponent(user)}:${encodeURIComponent(password)}`;
+    const authSource = process.env.DB_AUTH_SOURCE || "admin";
+    return `mongodb://${credentials}@${host}:${port}/${name}?authSource=${authSource}`;
   }
-  return res;
+
+  return `mongodb://${host}:${port}/${name}`;
 }
 
-/**
- * Get a client from the pool (for transactions).
- */
-async function getClient() {
-  return pool.connect();
+async function connect() {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+
+  await mongoose.connect(getMongoUri(), {
+    serverSelectionTimeoutMS: Number(process.env.DB_TIMEOUT_MS) || 10000,
+    maxPoolSize: Number(process.env.DB_POOL_SIZE) || 10,
+  });
+
+  return mongoose.connection;
 }
 
-module.exports = { query, getClient, pool };
+async function disconnect() {
+  await mongoose.disconnect();
+}
+
+mongoose.connection.on("error", (err) => {
+  console.error("[DB] MongoDB connection error", err);
+});
+
+module.exports = { connect, disconnect, getMongoUri, mongoose };
