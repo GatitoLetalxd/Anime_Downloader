@@ -41,7 +41,7 @@
 | **Frontend** | React 19, Vite 8, Tailwind CSS v4, React Router Dom, Socket.io-Client |
 | **Backend** | Node.js, Express, Socket.io, Fluent-FFmpeg, FFmpeg-Static, Axios, Cheerio, Puppeteer |
 | **Seguridad** | JWT (JSON Web Tokens), cookies seguras HTTP-Only, encriptación Bcrypt.js |
-| **Persistencia** | PostgreSQL, pg Pool |
+| **Persistencia** | MongoDB, Mongoose |
 
 ---
 
@@ -49,20 +49,18 @@
 
 ### Requisitos Previos
 *   Tener instalado [Node.js](https://nodejs.org/) (v18 o superior).
-*   Tener instalado y ejecutándose una base de datos [PostgreSQL](https://www.postgresql.org/).
+*   Tener instalado y ejecutándose una base de datos [MongoDB](https://www.mongodb.com/) (v6 o superior).
 
 ### Paso 1: Configurar Variables de Entorno `.env`
 Crea un archivo `.env` en la carpeta `backend/` basado en `backend/.env.example` y rellena las credenciales de tu base de datos y tus secretos JWT:
 ```env
 PORT=3001
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=tu_usuario
-DB_PASSWORD=tu_contraseña
-DB_NAME=lunielanime
+MONGO_URI=mongodb://localhost:27017/lunielanime
 JWT_SECRET=tu_secreto_jwt
 JWT_REFRESH_SECRET=tu_secreto_refresh_jwt
 ```
+
+Alternativamente a `MONGO_URI` puedes usar las variables sueltas `DB_HOST`, `DB_PORT` (27017), `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` y `DB_AUTH_SOURCE`.
 
 ### Paso 2: Instalar Dependencias
 Instala los paquetes necesarios en ambas carpetas del proyecto:
@@ -77,12 +75,14 @@ npm install
 ```
 
 ### Paso 3: Inicializar la Base de Datos
-Ejecuta el script de migración para aplicar el esquema de tablas SQL en tu PostgreSQL:
+Ejecuta el script de migración para crear las colecciones y sus índices en tu MongoDB:
 ```bash
 cd ../backend
-node src/db/migrate.js
+npm run migrate
 ```
-*(Opcional) Ejecuta `node src/db/seed-admin.js` para registrar tu primer usuario administrador manualmente desde la consola.*
+*(Opcional) Ejecuta `npm run seed:admin` para registrar tu primer usuario administrador manualmente desde la consola.*
+
+*(Solo si vienes de la versión con PostgreSQL) Ejecuta `npm run migrate:from-postgres` para copiar los usuarios, favoritos y progreso desde la base PostgreSQL antigua. Configura antes `PG_HOST`, `PG_PORT`, `PG_USERNAME`, `PG_PASSWORD` y `PG_NAME` en el `.env`. El script es idempotente: se puede reejecutar sin duplicar datos.*
 
 ### Paso 4: Encender la Aplicación
 Para iniciar el proyecto completo simultáneamente de forma sencilla:
