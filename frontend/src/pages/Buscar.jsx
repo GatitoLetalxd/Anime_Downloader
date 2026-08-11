@@ -922,9 +922,10 @@ export const Buscar = () => {
                       <iframe
                         src={selectedServerUrl}
                         title="Video Player"
-                        referrerPolicy="no-referrer"
+                        referrerPolicy="no-referrer-when-downgrade"
                         allowFullScreen
-                        sandbox="allow-scripts allow-same-origin allow-forms"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         className="absolute inset-0 w-full h-full border-none"
                       />
                     </div>
