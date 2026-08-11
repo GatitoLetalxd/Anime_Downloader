@@ -826,7 +826,7 @@ export const Buscar = () => {
                     setShowAdultContent(next);
                   }}
                   title={showAdultContent ? "Ocultar +18" : "Mostrar +18"}
-                  className="w-8 h-8 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black text-lg flex items-center justify-center transition-all duration-200 shadow-md border border-rose-400/40 cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 active:scale-95 text-rose-400 hover:text-rose-300 font-black text-sm flex items-center justify-center transition-all duration-200 border border-rose-500/25 cursor-pointer shrink-0"
                 >
                   {showAdultContent ? '−' : '+'}
                 </button>
