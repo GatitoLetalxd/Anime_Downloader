@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { obtenerRecomendaciones, obtenerGeneros, getProxiedImageUrl } from '../lib/api';
+import { obtenerRecomendaciones, obtenerGeneros, getProxiedImageUrl, getAdultContentState, toggleAdultContentState } from '../lib/api';
 import AnimeCard, { SkeletonAnimeCard } from '../components/AnimeCard';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,6 +17,15 @@ export const Inicio = () => {
   const [activeProvider, setActiveProvider] = useState('animeav1');
   const [showAdultWarning, setShowAdultWarning] = useState(false);
   const [continueWatching, setContinueWatching] = useState([]);
+  const [showAdultContent, setShowAdultContent] = useState(getAdultContentState);
+
+  useEffect(() => {
+    const handleAdultToggle = (e) => {
+      setShowAdultContent(e.detail !== undefined ? e.detail : getAdultContentState());
+    };
+    window.addEventListener('luniel_adult_toggle', handleAdultToggle);
+    return () => window.removeEventListener('luniel_adult_toggle', handleAdultToggle);
+  }, []);
 
   // Fetch data
   useEffect(() => {
@@ -263,12 +272,26 @@ export const Inicio = () => {
 
       {/* 3. Popular Categories Section */}
       <div className="space-y-4">
-        <h3 className="text-lg md:text-xl font-extrabold text-white flex items-center space-x-2.5 tracking-wide">
-          <svg className="w-5 h-5 text-[#00f2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span>Explorar Categorías</span>
-        </h3>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg md:text-xl font-extrabold text-white flex items-center space-x-2.5 tracking-wide">
+            <svg className="w-5 h-5 text-[#00f2ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Explorar Categorías</span>
+          </h3>
+
+          {/* Red toggle button (+ / -) without text */}
+          <button
+            onClick={() => {
+              const next = toggleAdultContentState();
+              setShowAdultContent(next);
+            }}
+            title={showAdultContent ? "Ocultar +18" : "Mostrar +18"}
+            className="w-8 h-8 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black text-lg flex items-center justify-center transition-all duration-200 shadow-md border border-rose-400/40 cursor-pointer"
+          >
+            {showAdultContent ? '−' : '+'}
+          </button>
+        </div>
 
         <div className="flex md:flex-wrap gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {genres.length === 0 ? (
@@ -276,23 +299,25 @@ export const Inicio = () => {
               <div key={i} className="w-24 h-9 rounded-xl skeleton flex-shrink-0 snap-start" />
             ))
           ) : (
-            genres.map((genre) => {
-              const isAdult = genre.slug === 'hentaila';
-              return (
-                <button
-                  key={genre.slug}
-                  onClick={() => handleGenreClick(genre)}
-                  className={`flex-shrink-0 snap-start px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-300 border ${
-                    isAdult
-                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/50'
-                      : 'bg-[#0d1f42]/70 border-white/10 text-slate-300 hover:bg-[#00f2ff]/10 hover:border-[#00f2ff]/40 hover:text-white hover:scale-105'
-                  }`}
-                >
-                  {genre.name}
-                  {isAdult && <span className="ml-1.5 text-[9px] font-black tracking-wide bg-rose-500 text-white px-1.5 py-0.5 rounded">18+</span>}
-                </button>
-              );
-            })
+            genres
+              .filter((genre) => showAdultContent || (genre.slug !== 'hentaila' && genre.slug !== 'hentai'))
+              .map((genre) => {
+                const isAdult = genre.slug === 'hentaila' || genre.slug === 'hentai';
+                return (
+                  <button
+                    key={genre.slug}
+                    onClick={() => handleGenreClick(genre)}
+                    className={`flex-shrink-0 snap-start px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-300 border ${
+                      isAdult
+                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/50'
+                        : 'bg-[#0d1f42]/70 border-white/10 text-slate-300 hover:bg-[#00f2ff]/10 hover:border-[#00f2ff]/40 hover:text-white hover:scale-105'
+                    }`}
+                  >
+                    {genre.name}
+                    {isAdult && <span className="ml-1.5 text-[9px] font-black tracking-wide bg-rose-500 text-white px-1.5 py-0.5 rounded">18+</span>}
+                  </button>
+                );
+              })
           )}
         </div>
       </div>

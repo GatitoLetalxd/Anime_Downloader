@@ -17,6 +17,20 @@ export const getApiUrl = () => {
 const API_URL = getApiUrl();
 const API_KEY = import.meta.env.VITE_API_KEY || 'luniel_api_secure_key_2026_9b8c7d6e5a4f3c2b';
 
+export const getAdultContentState = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('luniel_show_adult') === 'true';
+};
+
+export const toggleAdultContentState = () => {
+  if (typeof window === 'undefined') return false;
+  const current = getAdultContentState();
+  const next = !current;
+  localStorage.setItem('luniel_show_adult', String(next));
+  window.dispatchEvent(new CustomEvent('luniel_adult_toggle', { detail: next }));
+  return next;
+};
+
 const client = axios.create({
   baseURL: API_URL,
   headers: {

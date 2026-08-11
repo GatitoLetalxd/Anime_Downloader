@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { buscarAnime, obtenerInfo, getProxiedImageUrl, obtenerEnlacesEpisodio, obtenerGeneros } from '../lib/api';
+import { buscarAnime, obtenerInfo, getProxiedImageUrl, obtenerEnlacesEpisodio, obtenerGeneros, getAdultContentState, toggleAdultContentState } from '../lib/api';
 import AnimeCard, { SkeletonAnimeCard } from '../components/AnimeCard';
 import EpisodioSelector from '../components/EpisodioSelector';
 import useDescargas from '../hooks/useDescargas';
@@ -32,6 +32,15 @@ export const Buscar = () => {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [showAdultContent, setShowAdultContent] = useState(getAdultContentState);
+
+  useEffect(() => {
+    const handleAdultToggle = (e) => {
+      setShowAdultContent(e.detail !== undefined ? e.detail : getAdultContentState());
+    };
+    window.addEventListener('luniel_adult_toggle', handleAdultToggle);
+    return () => window.removeEventListener('luniel_adult_toggle', handleAdultToggle);
+  }, []);
 
   // Episode view states
   const [selectedAnime, setSelectedAnime] = useState(null);
@@ -780,11 +789,13 @@ export const Buscar = () => {
                     className="bg-transparent text-slate-200 focus:outline-none font-bold cursor-pointer"
                   >
                     <option value="" className="bg-[#081631] text-slate-200">Todas las categorías</option>
-                    {genres.map((genre) => (
-                      <option key={genre.slug} value={genre.slug} className="bg-[#081631] text-slate-200">
-                        {genre.name}
-                      </option>
-                    ))}
+                    {genres
+                      .filter((genre) => showAdultContent || (genre.slug !== 'hentaila' && genre.slug !== 'hentai'))
+                      .map((genre) => (
+                        <option key={genre.slug} value={genre.slug} className="bg-[#081631] text-slate-200">
+                          {genre.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -801,9 +812,24 @@ export const Buscar = () => {
                     <option value="animeflv" className="bg-[#081631] text-slate-200">AnimeFLV</option>
                     <option value="tioanime" className="bg-[#081631] text-slate-200">TioAnime</option>
                     <option value="jkanime" className="bg-[#081631] text-slate-200">JKAnime</option>
-                    <option value="hentaila" className="bg-[#081631] text-slate-200">HentaiLA (+18)</option>
+                    {showAdultContent && (
+                      <option value="hentaila" className="bg-[#081631] text-slate-200">HentaiLA (+18)</option>
+                    )}
                   </select>
                 </div>
+
+                {/* Red toggle button (+ / -) without text */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = toggleAdultContentState();
+                    setShowAdultContent(next);
+                  }}
+                  title={showAdultContent ? "Ocultar +18" : "Mostrar +18"}
+                  className="w-8 h-8 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black text-lg flex items-center justify-center transition-all duration-200 shadow-md border border-rose-400/40 cursor-pointer shrink-0"
+                >
+                  {showAdultContent ? '−' : '+'}
+                </button>
               </div>
             </form>
           </div>

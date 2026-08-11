@@ -82,7 +82,7 @@ export const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 glass px-4 md:px-8 py-3.5 flex flex-col shadow-2xl border-b border-[#00f2ff]/15 backdrop-blur-2xl">
       <div className="flex items-center justify-between w-full">
-        
+
         {/* Logo with Cyber Anime Emblem */}
         <Link to="/" className="flex items-center space-x-3.5 group">
           <div className="relative w-10 h-10 md:w-11 md:h-11 rounded-2xl overflow-hidden flex items-center justify-center border border-[#00f2ff]/40 bg-[#081631] glow-cyan transition-all duration-300 group-hover:scale-105 group-hover:border-[#00f2ff]">
@@ -93,7 +93,7 @@ export const Navbar = () => {
             />
             <div className="absolute inset-0 bg-gradient-to-tr from-[#00f2ff]/10 to-transparent pointer-events-none" />
           </div>
-          
+
           <div className="flex flex-col">
             <span className="text-xl md:text-2xl font-black tracking-widest text-gradient-cyan group-hover:brightness-125 transition-all">
               LUNIEL<span className="text-[#00f2ff]">ANIME</span>
@@ -113,11 +113,10 @@ export const Navbar = () => {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`relative px-4 py-2 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${
-                    isActive
+                  className={`relative px-4 py-2 rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ${isActive
                       ? 'text-white bg-[#00f2ff]/15 border border-[#00f2ff]/40 glow-cyan'
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   {item.name}
                   {item.badge > 0 && (
@@ -131,7 +130,7 @@ export const Navbar = () => {
 
             {/* Download Android APK Link */}
             <a
-              href="/LunielAnime.apk"
+              href="/LunielAnime-v1.2.apk"
               download
               className="flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-extrabold text-[#38bdf8] hover:text-white hover:bg-[#38bdf8]/15 border border-transparent hover:border-[#38bdf8]/30 transition-all duration-300"
               title="Descargar App Móvil (Android)"
@@ -183,11 +182,10 @@ export const Navbar = () => {
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     if (diffDays > 0) {
                       return (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md leading-none ${
-                          diffDays <= 5
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md leading-none ${diffDays <= 5
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                             : 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/30'
-                        }`}>
+                          }`}>
                           {diffDays}d
                         </span>
                       );
@@ -273,11 +271,10 @@ export const Navbar = () => {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`px-4 py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-between ${
-                  isActive
+                className={`px-4 py-3 rounded-xl text-sm font-extrabold transition-all flex items-center justify-between ${isActive
                     ? 'text-white bg-[#00f2ff]/15 border border-[#00f2ff]/40 glow-cyan'
                     : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 <span>{item.name}</span>
                 {item.badge > 0 && (

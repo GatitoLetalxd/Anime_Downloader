@@ -54,19 +54,19 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-[62%_38%] bg-[#030b1e] text-white overflow-hidden font-sans relative">
-      
+
       {/* Left Panel: Cyber Anime Artwork & Branding */}
       <div className="hidden md:flex flex-col justify-between p-12 relative overflow-hidden bg-[#030b1e] bg-cyber-grid">
-        
+
         {/* Background Image in Full Vibrant Color with Gradient Vignette */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-[15000ms] ease-out hover:scale-105 opacity-90"
-          style={{ 
+          style={{
             backgroundImage: "url('/images/login-bg.png')",
             backgroundColor: '#030b1e'
           }}
         />
-        
+
         {/* Soft Radial Cyan Ambient Overlay for Text Contrast */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#030b1e]/40 via-[#030b1e]/30 to-[#030b1e] pointer-events-none" />
         <div className="absolute top-[-10%] left-[-10%] w-[550px] h-[550px] bg-[#00f2ff]/15 rounded-full blur-[130px] pointer-events-none" />
@@ -75,9 +75,9 @@ export default function Login() {
         {/* Top Brand Signature with Emblem Logo */}
         <div className="relative z-10 flex items-center gap-3.5 animate-fade-in">
           <div className="w-12 h-12 rounded-2xl bg-[#081631] border border-[#00f2ff]/40 overflow-hidden flex items-center justify-center glow-cyan">
-            <img 
-              src={logoImg} 
-              alt="LunielAnime Emblem" 
+            <img
+              src={logoImg}
+              alt="LunielAnime Emblem"
               className="w-full h-full object-cover"
             />
           </div>
@@ -124,11 +124,11 @@ export default function Login() {
 
       {/* Right Panel: Cyber Login Form */}
       <div className="relative flex items-center justify-center p-6 md:p-12 overflow-hidden bg-[#030b1e] border-l border-white/10">
-        
+
         {/* Mobile Background Image */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center md:hidden block pointer-events-none opacity-40 filter blur-md scale-105"
-          style={{ 
+          style={{
             backgroundImage: "url('/images/login-bg.png')",
             backgroundColor: '#030b1e'
           }}
@@ -139,17 +139,17 @@ export default function Login() {
 
         {/* Login Card Container */}
         <div className="relative w-full max-w-md bg-[#0d1f42]/95 backdrop-blur-2xl border border-[#00f2ff]/30 rounded-3xl p-8 md:p-10 shadow-[0_0_50px_rgba(0,242,255,0.12)] z-10 animate-fade-in">
-          
+
           {/* Logo & Header */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative w-16 h-16 rounded-2xl bg-[#081631] border border-[#00f2ff]/50 overflow-hidden flex items-center justify-center mb-4 glow-cyan">
-              <img 
-                src={logoImg} 
-                alt="LunielAnime Emblem" 
+              <img
+                src={logoImg}
+                alt="LunielAnime Emblem"
                 className="w-full h-full object-cover"
               />
             </div>
-            
+
             <h1 className="text-2xl font-black text-[#00f2ff] tracking-widest">
               LUNIEL<span className="text-white">ANIME</span>
             </h1>
@@ -170,7 +170,7 @@ export default function Login() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            
+
             {/* Email Input */}
             <div className="relative">
               <input
@@ -213,7 +213,7 @@ export default function Login() {
               >
                 Contraseña
               </label>
-              
+
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
@@ -262,7 +262,7 @@ export default function Login() {
           {/* APK Link */}
           <div className="mt-6 pt-6 border-t border-white/10 flex flex-col items-center">
             <a
-              href="/LunielAnime.apk"
+              href="/LunielAnime-v1.2.apk"
               download
               className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-[#00f2ff]/10 border border-white/10 hover:border-[#00f2ff]/30 text-xs font-bold text-[#38bdf8] hover:text-white transition-all duration-200"
             >
