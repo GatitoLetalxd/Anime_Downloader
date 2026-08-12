@@ -264,8 +264,10 @@ export const Buscar = () => {
         if (matchingServer) {
           setSelectedServerUrl(matchingServer.url);
         } else {
-          setSelectedServerUrl(availableServers[0].url);
-          setSelectedServerName(availableServers[0].server);
+          const nonHlsServer = availableServers.find(srv => !srv.server.toLowerCase().includes('hls'));
+          const defaultServer = nonHlsServer || availableServers[0];
+          setSelectedServerUrl(defaultServer.url);
+          setSelectedServerName(defaultServer.server);
         }
       }
     } catch (error) {
@@ -918,7 +920,7 @@ export const Buscar = () => {
                   
                   {/* Iframe */}
                   {selectedServerUrl ? (
-                    <div className="relative w-full aspect-video rounded-none sm:rounded-2xl overflow-hidden bg-black border-y sm:border border-[#00f2ff]/30 shadow-2xl">
+                    <div className="relative w-full aspect-video rounded-none sm:rounded-2xl overflow-hidden bg-black border-y sm:border border-[#00f2ff]/30 shadow-2xl group">
                       <iframe
                         src={selectedServerUrl}
                         title="Video Player"
@@ -928,6 +930,19 @@ export const Buscar = () => {
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         className="absolute inset-0 w-full h-full border-none"
                       />
+                      {(selectedServerUrl.includes('zilla') || selectedServerName.toLowerCase().includes('hls')) && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <a
+                            href={selectedServerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-extrabold text-[11px] backdrop-blur-md shadow-lg border border-rose-400/40 flex items-center gap-1.5 transition-all cursor-pointer"
+                            title="Si el reproductor HLS se bloquea por Cloudflare, pulsa para abrirlo en pestaña directa"
+                          >
+                            <span>↗ Abrir HLS en Pestaña Directa</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="aspect-video w-full rounded-none sm:rounded-2xl bg-[#081631] flex flex-col justify-center items-center py-20 border-y sm:border border-white/10">
