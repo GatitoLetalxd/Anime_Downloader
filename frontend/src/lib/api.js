@@ -188,14 +188,28 @@ export const obtenerProgreso = async (downloadId) => {
   }
 };
 
+export const obtenerStreamDirecto = async (url, variant = 'SUB', server = '') => {
+  try {
+    const response = await client.get(`/api/v1/anime/direct-stream`, {
+      params: { url, variant, server },
+    });
+    return response.data?.data || null;
+  } catch (error) {
+    console.error('Error fetching direct stream:', error);
+    return null;
+  }
+};
+
 export default {
   pingAPI,
   buscarAnime,
   obtenerInfo,
   obtenerEnlacesEpisodio,
+  obtenerStreamDirecto,
   iniciarDescarga,
   obtenerProgreso,
   getProxiedImageUrl,
   obtenerRecomendaciones,
   obtenerGeneros,
 };
+

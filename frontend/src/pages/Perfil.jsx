@@ -105,7 +105,7 @@ export default function Perfil() {
       } else {
         setMessage('error:' + (data.message || 'Error al guardar'));
       }
-    } catch (_err) {
+    } catch {
       setMessage('error:Error de conexión');
     } finally {
       setIsSaving(false);
@@ -141,7 +141,7 @@ export default function Perfil() {
       } else {
         setPwdMessage({ text: data.message || 'Error al cambiar contraseña', type: 'error' });
       }
-    } catch (_err) {
+    } catch {
       setPwdMessage({ text: 'Error de conexión', type: 'error' });
     } finally {
       setPwdSaving(false);

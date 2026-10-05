@@ -1,8 +1,5 @@
 const express = require("express");
 const axios = require("axios");
-const ffmpeg = require("fluent-ffmpeg");
-const systemFfmpeg = process.platform === "win32" ? require("ffmpeg-static") : "ffmpeg";
-ffmpeg.setFfmpegPath(systemFfmpeg);
 const { requireApiKey } = require("../middlewares/auth");
 const { dailyRateLimit } = require("../middlewares/rate-limit");
 const animeService = require("../services/anime.service");
@@ -115,6 +112,35 @@ router.get(
   })
 );
 
+router.get(
+  "/direct-stream",
+  asyncHandler(async (req, res) => {
+    if (!req.query.url) {
+      throw new ApiError(400, "Se requiere el parametro url");
+    }
+
+    try {
+      const resolved = await downloadService.resolveEpisodeDirectUrl(
+        req.query.url,
+        req.query.variant || "SUB",
+        req.query.server,
+        req.query.excludeServer
+      );
+
+      res.status(200).json({
+        success: true,
+        data: resolved,
+      });
+    } catch (err) {
+      res.status(200).json({
+        success: false,
+        message: err.message,
+        data: null,
+      });
+    }
+  })
+);
+
 router.post(
   "/download",
   asyncHandler(async (req, res) => {
@@ -190,53 +216,43 @@ router.get(
     const finalReferer = resolvedReferer || downloadService.getRefererForUrl(directUrl);
 
     if (isHls) {
-      ffmpeg(directUrl)
-        .inputOptions([
-          '-headers',
-          `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${finalReferer}\r\n`,
-          '-reconnect', '1',
-          '-reconnect_at_eof', '1',
-          '-reconnect_streamed', '1',
-          '-reconnect_delay_max', '5'
-        ])
-        .outputOptions([
-          "-map 0:v:0?",
-          "-map 0:a:0?",
-          "-c:v copy",
-          "-c:a aac",
-          "-b:a 192k",
-          "-af aresample=async=1000",
-          "-bsf:a aac_adtstoasc",
-          "-avoid_negative_ts make_zero",
-          "-movflags frag_keyframe+empty_moov"
-        ])
-        .toFormat("mp4")
-        .on("error", (err) => {
-          console.error("FFmpeg stream-download error:", err.message);
-        })
-        .pipe(res, { end: true });
-    } else {
-      const response = await axios.get(directUrl, {
-        responseType: "stream",
-        timeout: 120000,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          Referer: finalReferer,
-        },
-        validateStatus: (status) => status >= 200 && status < 400,
-      });
-
-      const contentType = (response.headers["content-type"] || "").toLowerCase();
-      if (contentType.includes("text/html")) {
-        throw new ApiError(502, "El servidor del video devolvió HTML en lugar de un archivo de video");
-      }
-
-      if (response.headers["content-length"]) {
-        res.setHeader("Content-Length", response.headers["content-length"]);
-      }
-
-      response.data.pipe(res);
+      throw new ApiError(
+        400,
+        "Las descargas de servidores HLS han sido deshabilitadas debido a problemas de reconstrucción de video. Por favor utiliza un servidor de descarga directa (MP4Upload, Voe, Mega, YourUpload, UPNShare, etc.)"
+      );
     }
+
+    // Direct Client-Side Download Bypass (saves 100% VPS RAM and CPU)
+    const isDirectCandidate =
+      req.query.direct === "1" ||
+      server.toLowerCase().includes("pixeldrain") ||
+      server.toLowerCase().includes("mega");
+
+    if (isDirectCandidate) {
+      return res.redirect(directUrl);
+    }
+
+    const response = await axios.get(directUrl, {
+      responseType: "stream",
+      timeout: 120000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Referer: finalReferer,
+      },
+      validateStatus: (status) => status >= 200 && status < 400,
+    });
+
+    const contentType = (response.headers["content-type"] || "").toLowerCase();
+    if (contentType.includes("text/html")) {
+      throw new ApiError(502, "El servidor del video devolvió HTML en lugar de un archivo de video");
+    }
+
+    if (response.headers["content-length"]) {
+      res.setHeader("Content-Length", response.headers["content-length"]);
+    }
+
+    response.data.pipe(res);
   })
 );
 

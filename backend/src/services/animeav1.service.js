@@ -5,7 +5,7 @@ const { URL } = require("node:url");
 const { ApiError } = require("../utils/api-error");
 const MemoryCache = require("../utils/cache");
 
-const DEFAULT_DOMAIN = process.env.DEFAULT_ANIME_DOMAIN || "animeav1.com";
+const DEFAULT_DOMAIN = "animeav1.com";
 
 const HTTP_HEADERS = {
   "User-Agent":

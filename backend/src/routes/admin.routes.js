@@ -45,6 +45,53 @@ router.get(
   })
 );
 
+// ─── GET /api/admin/scraper-health ───────────────────────────────────────────
+router.get(
+  "/scraper-health",
+  asyncHandler(async (_req, res) => {
+    const animeService = require("../services/anime.service");
+    const providers = [
+      { id: "tvanime", label: "TVAnime" },
+      { id: "animeav1", label: "AnimeAV1" },
+      { id: "tioanime", label: "TioAnime" },
+    ];
+
+    const healthResults = await Promise.all(
+      providers.map(async (p) => {
+        const start = Date.now();
+        try {
+          const rec = await animeService.getRecommendations(p.id);
+          const elapsed = Date.now() - start;
+          const count = rec?.data?.results?.length || (Array.isArray(rec?.data) ? rec.data.length : 0);
+          return {
+            id: p.id,
+            label: p.label,
+            status: count > 0 ? "healthy" : "warning",
+            latencyMs: elapsed,
+            count,
+            error: null,
+          };
+        } catch (err) {
+          return {
+            id: p.id,
+            label: p.label,
+            status: "unhealthy",
+            latencyMs: Date.now() - start,
+            count: 0,
+            error: err.message,
+          };
+        }
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      data: healthResults,
+    });
+  })
+);
+
 // ─── GET /api/admin/users ────────────────────────────────────────────────────
 router.get(
   "/users",

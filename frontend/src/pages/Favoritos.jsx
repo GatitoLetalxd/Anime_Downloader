@@ -17,7 +17,7 @@ export default function Favoritos() {
       const res = await authFetch(`${API_BASE}/api/user/favorites`);
       const data = await res.json();
       if (data.success) setFavorites(data.data);
-    } catch (_err) {
+    } catch {
       // silent
     } finally {
       setIsLoading(false);

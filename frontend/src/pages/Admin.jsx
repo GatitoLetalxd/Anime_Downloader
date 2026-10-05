@@ -98,7 +98,6 @@ export default function Admin() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [modal, setModal] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
 
   const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', role: 'user', durationDays: '0', customDays: '' });
@@ -251,11 +250,6 @@ export default function Admin() {
     } finally {
       setIsEditing(false);
     }
-  };
-
-  const formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const getExpirationStatus = (user) => {

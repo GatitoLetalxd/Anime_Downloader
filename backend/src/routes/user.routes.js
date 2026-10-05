@@ -75,7 +75,7 @@ router.get(
   "/progress",
   asyncHandler(async (req, res) => {
     const result = await db.query(
-      `SELECT id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, updated_at
+      `SELECT id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, progress_seconds, duration_seconds, updated_at
        FROM watch_progress WHERE user_id = $1 ORDER BY updated_at DESC`,
       [req.user.id]
     );
@@ -87,23 +87,28 @@ router.get(
 router.post(
   "/progress",
   asyncHandler(async (req, res) => {
-    const { anime_url, anime_title, anime_cover, provider, episode_num, episode_url } = req.body;
+    const { anime_url, anime_title, anime_cover, provider, episode_num, episode_url, progress_seconds, duration_seconds } = req.body;
 
     if (!anime_url || !anime_title || episode_num === undefined || !episode_url) {
       throw new ApiError(400, "anime_url, anime_title, episode_num y episode_url son requeridos");
     }
 
+    const progSec = Math.max(0, parseInt(progress_seconds, 10) || 0);
+    const durSec = Math.max(0, parseInt(duration_seconds, 10) || 0);
+
     const result = await db.query(
-      `INSERT INTO watch_progress (user_id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `INSERT INTO watch_progress (user_id, anime_url, anime_title, anime_cover, provider, episode_num, episode_url, progress_seconds, duration_seconds, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
        ON CONFLICT (user_id, anime_url) DO UPDATE
-         SET episode_num = EXCLUDED.episode_num,
-             episode_url = EXCLUDED.episode_url,
-             anime_cover = EXCLUDED.anime_cover,
-             provider    = EXCLUDED.provider,
-             updated_at  = NOW()
+         SET episode_num      = EXCLUDED.episode_num,
+             episode_url      = EXCLUDED.episode_url,
+             anime_cover      = EXCLUDED.anime_cover,
+             provider         = EXCLUDED.provider,
+             progress_seconds = EXCLUDED.progress_seconds,
+             duration_seconds = EXCLUDED.duration_seconds,
+             updated_at       = NOW()
        RETURNING *`,
-      [req.user.id, anime_url, anime_title, anime_cover || null, provider || null, episode_num, episode_url]
+      [req.user.id, anime_url, anime_title, anime_cover || null, provider || null, episode_num, episode_url, progSec, durSec]
     );
 
     res.status(200).json({ success: true, data: result.rows[0] });

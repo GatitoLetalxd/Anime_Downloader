@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const { ApiError } = require("../utils/api-error");
 
 function getConfiguredApiKeys() {
@@ -14,12 +15,27 @@ function requireApiKey(req, _res, next) {
     return next();
   }
 
+  // 1. If valid JWT Bearer token is present, authenticate user directly
+  const authHeader = req.header("authorization") || "";
+  if (authHeader.startsWith("Bearer ")) {
+    const token = authHeader.slice(7).trim();
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+      req.apiKey = `user-${decoded.id}`;
+      return next();
+    } catch {
+      // Token invalid or expired, continue to check API Key
+    }
+  }
+
+  // 2. Otherwise require API Key from header or query
   const apiKeyFromHeader = req.header("x-api-key");
   const apiKeyFromQuery = typeof req.query.apiKey === "string" ? req.query.apiKey : "";
   const apiKey = (apiKeyFromHeader || apiKeyFromQuery || "").trim();
 
   if (!apiKey) {
-    return next(new ApiError(401, "API Key requerida. Usa el header X-API-Key o parametro apiKey"));
+    return next(new ApiError(401, "Autenticación requerida. Usa un token Bearer o el header X-API-Key"));
   }
 
   const configuredKeys = getConfiguredApiKeys();
@@ -32,3 +48,4 @@ function requireApiKey(req, _res, next) {
 }
 
 module.exports = { requireApiKey };
+

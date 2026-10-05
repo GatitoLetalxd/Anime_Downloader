@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const BarraProgreso = ({ descarga, onCancel }) => {
   const { title, progress, speed, speedText, size, status, error } = descarga;

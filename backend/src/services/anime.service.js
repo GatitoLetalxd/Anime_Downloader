@@ -1,38 +1,24 @@
 const { URL } = require("node:url");
 const { ApiError } = require("../utils/api-error");
+const tvanimeService = require("./tvanime.service");
 const animeav1Service = require("./animeav1.service");
-const jkanimeService = require("./jkanime.service");
-const animeflvService = require("./animeflv.service");
-const hentailaService = require("./hentaila.service");
 const tioanimeService = require("./tioanime.service");
-const monoschinosService = require("./monoschinos.service");
+const hentailaService = require("./hentaila.service");
 
-const DEFAULT_ANIME_DOMAIN = process.env.DEFAULT_ANIME_DOMAIN || "animeav1.com";
+const DEFAULT_ANIME_DOMAIN = process.env.DEFAULT_ANIME_DOMAIN || "tvanime.tv";
 
 const PROVIDERS = [
   {
+    id: "tvanime",
+    label: "TVAnime",
+    domains: [DEFAULT_ANIME_DOMAIN, "tvanime.tv", "www.tvanime.tv", "animefenix2.tv"],
+    service: tvanimeService,
+  },
+  {
     id: "animeav1",
     label: "AnimeAV1",
-    domains: [DEFAULT_ANIME_DOMAIN, "animeav1.com", "www.animeav1.com"],
+    domains: ["animeav1.com", "www.animeav1.com"],
     service: animeav1Service,
-  },
-  {
-    id: "jkanime",
-    label: "JKAnime",
-    domains: ["jkanime.net", "www.jkanime.net"],
-    service: jkanimeService,
-  },
-  {
-    id: "animeflv",
-    label: "AnimeFLV",
-    domains: ["animeflv.net", "www.animeflv.net", "www4.animeflv.net"],
-    service: animeflvService,
-  },
-  {
-    id: "hentaila",
-    label: "HentaiLA",
-    domains: ["hentaila.com", "www.hentaila.com"],
-    service: hentailaService,
   },
   {
     id: "tioanime",
@@ -41,10 +27,10 @@ const PROVIDERS = [
     service: tioanimeService,
   },
   {
-    id: "monoschinos",
-    label: "MonosChinos",
-    domains: ["monoschinos2.com", "www.monoschinos2.com"],
-    service: monoschinosService,
+    id: "hentaila",
+    label: "HentaiLA",
+    domains: ["hentaila.com", "www.hentaila.com"],
+    service: hentailaService,
   },
 ];
 
@@ -121,8 +107,8 @@ async function searchAnime(query, domainCandidate, genre) {
   
   // If domainCandidate is "all" or not provided, perform search in parallel
   if (!domainCandidate || domainCandidate === "all") {
-    // Only query active providers that support search
-    const activeProviders = PROVIDERS.filter(p => p.id === "animeav1" || p.id === "animeflv" || p.id === "tioanime");
+    // Only query active providers that support search (TVAnime first, then AnimeAV1 and TioAnime)
+    const activeProviders = PROVIDERS.filter(p => p.id === "tvanime" || p.id === "animeav1" || p.id === "tioanime");
     const searchPromises = activeProviders.map(async (provider) => {
       try {
         const res = await provider.service.searchAnime(cleanQuery, provider.domains[0], cleanGenre);
@@ -171,17 +157,29 @@ async function searchAnime(query, domainCandidate, genre) {
   };
 }
 
+const animeCache = require("./anime-cache.service");
+
 async function getAnimeInfo(urlCandidate) {
   const provider = findProviderForUrl(urlCandidate) || PROVIDERS[0];
   if (!provider) {
     throw new ApiError(400, "Proveedor no soportado");
   }
 
+  // Check persistent database cache first
+  const cached = await animeCache.get(urlCandidate);
+  if (cached) {
+    return cached;
+  }
+
   const result = await provider.service.getAnimeInfo(urlCandidate);
-  return {
+  const formatted = {
     ...result,
     source: result?.source || provider.id,
   };
+
+  // Cache anime details for 24 hours
+  await animeCache.set(urlCandidate, provider.id, formatted, 24);
+  return formatted;
 }
 
 async function getEpisodeLinks(urlCandidate, includeMega, excludeServers) {
@@ -190,11 +188,21 @@ async function getEpisodeLinks(urlCandidate, includeMega, excludeServers) {
     throw new ApiError(400, "Proveedor no soportado");
   }
 
+  const cacheKey = `${urlCandidate}:m=${Boolean(includeMega)}:ex=${excludeServers || ""}`;
+  const cached = await animeCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const result = await provider.service.getEpisodeLinks(urlCandidate, includeMega, excludeServers);
-  return {
+  const formatted = {
     ...result,
     source: result?.source || provider.id,
   };
+
+  // Cache episode links for 4 hours
+  await animeCache.set(cacheKey, provider.id, formatted, 4);
+  return formatted;
 }
 
 async function getRecommendations(domainCandidate) {

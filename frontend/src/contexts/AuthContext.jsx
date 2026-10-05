@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         setAccessToken(null);
       }
-    } catch (_err) {
+    } catch {
       setUser(null);
       setAccessToken(null);
     } finally {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
         credentials: 'include',
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
-    } catch (_err) {
+    } catch {
       // Ignore network errors on logout
     } finally {
       setUser(null);

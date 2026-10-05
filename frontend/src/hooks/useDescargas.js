@@ -16,14 +16,14 @@ export const useDescargas = () => {
 
     const API_URL = getApiUrl();
     const serverParam = opciones.preferredServer && opciones.preferredServer !== 'auto' ? `&server=${encodeURIComponent(opciones.preferredServer)}` : '';
-    const excludeParam = opciones.excludeServer ? `&excludeServer=${encodeURIComponent(opciones.excludeServer)}` : '';
+    const excludeParam = `&excludeServer=${encodeURIComponent(opciones.excludeServer || 'hls')}`;
     const downloadStreamUrl = `${API_URL}/api/v1/anime/stream-download?url=${encodeURIComponent(urlEpisodio)}&variant=${opciones.variant || 'SUB'}${serverParam}${excludeParam}&apiKey=${encodeURIComponent(API_KEY)}`;
 
     // Build clean filename: e.g. kaguya-sama-season-3-ep1.mp4
     const parts = urlEpisodio.split('/').filter(Boolean);
     const lastPart = parts[parts.length - 1] || 'anime';
     const secondLastPart = parts[parts.length - 2] || 'anime';
-    let animeName = 'anime';
+    let animeName;
     let epNum = '';
 
     if (/^\d+$/.test(lastPart)) {
@@ -56,7 +56,9 @@ export const useDescargas = () => {
           if (document.body.contains(iframe)) {
             document.body.removeChild(iframe);
           }
-        } catch (_e) {}
+        } catch {
+          // ignore cleanup error
+        }
       }, 60000);
 
       const completedData = {

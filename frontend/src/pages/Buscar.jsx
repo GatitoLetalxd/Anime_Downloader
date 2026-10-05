@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { buscarAnime, obtenerInfo, getProxiedImageUrl, obtenerEnlacesEpisodio, obtenerGeneros, getAdultContentState, toggleAdultContentState } from '../lib/api';
+import { buscarAnime, obtenerInfo, getProxiedImageUrl, obtenerEnlacesEpisodio, obtenerStreamDirecto, obtenerGeneros, getAdultContentState, toggleAdultContentState } from '../lib/api';
 import AnimeCard, { SkeletonAnimeCard } from '../components/AnimeCard';
 import EpisodioSelector from '../components/EpisodioSelector';
+import ReproductorNativo from '../components/ReproductorNativo';
 import useDescargas from '../hooks/useDescargas';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Buscar = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { agregarTodos, agregarDescarga } = useDescargas();
+  const { agregarTodos } = useDescargas();
   const { authFetch, isAuthenticated } = useAuth();
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -48,7 +49,7 @@ export const Buscar = () => {
   const [fetchingInfo, setFetchingInfo] = useState(false);
 
   // Download selection states
-  const [selectedUrls, setSelectedUrls] = useState([]);
+  const [, setSelectedUrls] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -59,6 +60,8 @@ export const Buscar = () => {
   const [selectedSubDub, setSelectedSubDub] = useState('sub');
   const [selectedServerUrl, setSelectedServerUrl] = useState('');
   const [selectedServerName, setSelectedServerName] = useState('');
+  const [directStreamUrl, setDirectStreamUrl] = useState(null);
+  const [useNativePlayer, setUseNativePlayer] = useState(true);
 
   // Favorites & progress states
   const [isFavorite, setIsFavorite] = useState(false);
@@ -94,6 +97,9 @@ export const Buscar = () => {
     try {
       const data = await obtenerInfo(anime.url, controller.signal);
       if (data) {
+        if (!data.imagen && anime?.imagen) {
+          data.imagen = anime.imagen;
+        }
         setAnimeInfo(data);
       }
     } catch (error) {
@@ -172,7 +178,7 @@ export const Buscar = () => {
           const prog = progData.data.find((p) => p.anime_url === selectedAnime.url);
           setSavedProgress(prog || null);
         }
-      } catch (_err) {
+      } catch {
         // silent
       }
     };
@@ -207,7 +213,7 @@ export const Buscar = () => {
     }
   }, [isAuthenticated, isFavorite, selectedAnime, animeInfo, authFetch, API_BASE]);
 
-  const saveProgress = useCallback(async (ep) => {
+  const saveProgress = useCallback(async (ep, progressSec = 0, durationSec = 0) => {
     if (!isAuthenticated || !selectedAnime || !animeInfo) return;
     try {
       await authFetch(`${API_BASE}/api/user/progress`, {
@@ -219,10 +225,17 @@ export const Buscar = () => {
           provider: selectedAnime.provider,
           episode_num: ep.numero,
           episode_url: ep.url,
+          progress_seconds: progressSec,
+          duration_seconds: durationSec,
         }),
       });
-      setSavedProgress({ episode_num: ep.numero, episode_url: ep.url });
-    } catch (_err) {
+      setSavedProgress({
+        episode_num: ep.numero,
+        episode_url: ep.url,
+        progress_seconds: progressSec,
+        duration_seconds: durationSec,
+      });
+    } catch {
       // silent
     }
   }, [isAuthenticated, selectedAnime, animeInfo, authFetch, API_BASE]);
@@ -270,6 +283,16 @@ export const Buscar = () => {
           setSelectedServerName(defaultServer.server);
         }
       }
+
+      // Try resolving direct video stream for Native Player (No Ads)
+      setDirectStreamUrl(null);
+      obtenerStreamDirecto(ep.url, finalLang, selectedServerName)
+        .then((direct) => {
+          if (direct?.directUrl) {
+            setDirectStreamUrl(direct.directUrl);
+          }
+        })
+        .catch(() => {});
     } catch (error) {
       console.error('Error loading stream links:', error);
     } finally {
@@ -350,14 +373,12 @@ export const Buscar = () => {
   const [dlVariant, setDlVariant] = useState('SUB');
   const [dlServer, setDlServer] = useState('');
   const [episodeDetails, setEpisodeDetails] = useState(null);
-  const [detectedServers, setDetectedServers] = useState([]);
 
   const openDownloadModal = async (type, urls = []) => {
     setPendingDownload({ type, urls });
     setDlVariant('SUB');
     setDlServer('');
     setEpisodeDetails(null);
-    setDetectedServers([]);
     setCheckingVariants(true);
     setShowDownloadModal(true);
 
@@ -368,10 +389,10 @@ export const Buscar = () => {
         const epData = await obtenerEnlacesEpisodio(firstEp.url);
         setEpisodeDetails(epData);
 
-        const streamSub = epData?.streamLinks?.SUB || epData?.servers?.sub || [];
-        const streamDub = epData?.streamLinks?.DUB || epData?.servers?.dub || [];
-        const downloadSub = epData?.downloadLinks?.SUB || [];
-        const downloadDub = epData?.downloadLinks?.DUB || [];
+        const streamSub = (epData?.streamLinks?.SUB || epData?.servers?.sub || []).filter(s => !/hls|zilla/i.test(s.server));
+        const streamDub = (epData?.streamLinks?.DUB || epData?.servers?.dub || []).filter(s => !/hls|zilla/i.test(s.server));
+        const downloadSub = (epData?.downloadLinks?.SUB || []).filter(s => !/hls|zilla/i.test(s.server));
+        const downloadDub = (epData?.downloadLinks?.DUB || []).filter(s => !/hls|zilla/i.test(s.server));
         const variants = epData?.variants || {};
 
         const hasSub = !!variants.SUB || streamSub.length > 0 || downloadSub.length > 0;
@@ -384,27 +405,6 @@ export const Buscar = () => {
 
         if (hasDub && !hasSub) setDlVariant('DUB');
         else setDlVariant('SUB');
-
-        // Dynamically build detected servers from actual episode links
-        const serverMap = new Map();
-        const allLinks = [...streamSub, ...streamDub, ...downloadSub, ...downloadDub];
-        allLinks.forEach((l) => {
-          if (!l || !l.server) return;
-          const name = l.server.trim();
-          const key = name.toLowerCase();
-          if (!serverMap.has(key)) {
-            let label = name;
-            if (key.includes('hls')) label = 'HLS (Streaming HLS)';
-            else if (key.includes('mp4upload')) label = 'MP4Upload';
-            else if (key.includes('yourupload')) label = 'YourUpload';
-            else if (key.includes('pdrain')) label = 'PDrain';
-            else if (key.includes('1fichier')) label = '1Fichier';
-            else if (key.includes('mega')) label = 'Mega';
-            serverMap.set(key, { value: key, label });
-          }
-        });
-
-        setDetectedServers(Array.from(serverMap.values()));
       }
     } catch (err) {
       console.error('Error checking variants:', err);
@@ -413,20 +413,6 @@ export const Buscar = () => {
       setCheckingVariants(false);
     }
   };
-
-  const serverOptions = [
-    { value: '', label: 'Automático (HLS / Mejor Servidor)' },
-    ...(detectedServers.length > 0
-      ? detectedServers
-      : [
-          { value: 'hls', label: 'HLS (Streaming)' },
-          { value: 'mp4upload', label: 'MP4Upload' },
-          { value: 'yourupload', label: 'YourUpload' },
-          { value: 'pdrain', label: 'PDrain' },
-          { value: '1fichier', label: '1Fichier' },
-          { value: 'mega', label: 'Mega' },
-        ]),
-  ];
 
   const isVariantAvailable = (variantKey) => {
     if (!episodeDetails) return availableVariants[variantKey];
@@ -634,19 +620,19 @@ export const Buscar = () => {
                 <div className="glass-premium rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 relative overflow-hidden shadow-2xl border border-[#00f2ff]/30">
                   <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-[#00f2ff]/10 blur-3xl pointer-events-none" />
 
-                  {/* Poster Image */}
-                  <div className="w-44 h-64 md:w-52 md:h-76 rounded-2xl overflow-hidden border border-[#00f2ff]/30 shadow-2xl flex-shrink-0 mx-auto md:mx-0 glow-cyan">
-                    <img
-                      src={getProxiedImageUrl(animeInfo?.imagen || selectedAnime.imagen)}
-                      alt={animeInfo.titulo}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop';
-                      }}
-                    />
-                  </div>
+                    {/* Poster Image */}
+                    <div className="w-44 h-64 md:w-52 md:h-76 rounded-2xl overflow-hidden border border-[#00f2ff]/30 shadow-2xl flex-shrink-0 mx-auto md:mx-0 glow-cyan">
+                      <img
+                        src={getProxiedImageUrl(animeInfo?.imagen || selectedAnime?.imagen) || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop'}
+                        alt={animeInfo.titulo}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop';
+                        }}
+                      />
+                    </div>
 
                   {/* Info Text */}
                   <div className="flex-1 space-y-4 text-center md:text-left">
@@ -810,10 +796,9 @@ export const Buscar = () => {
                     className="bg-transparent text-slate-200 focus:outline-none font-bold cursor-pointer"
                   >
                     <option value="all" className="bg-[#081631] text-slate-200">Todos los Proveedores</option>
-                    <option value="animeav1" className="bg-[#081631] text-slate-200">AnimeAV1 (Recomendado)</option>
-                    <option value="animeflv" className="bg-[#081631] text-slate-200">AnimeFLV</option>
+                    <option value="tvanime" className="bg-[#081631] text-slate-200">TVAnime (Principal)</option>
+                    <option value="animeav1" className="bg-[#081631] text-slate-200">AnimeAV1</option>
                     <option value="tioanime" className="bg-[#081631] text-slate-200">TioAnime</option>
-                    <option value="jkanime" className="bg-[#081631] text-slate-200">JKAnime</option>
                     {showAdultContent && (
                       <option value="hentaila" className="bg-[#081631] text-slate-200">HentaiLA (+18)</option>
                     )}
@@ -918,8 +903,26 @@ export const Buscar = () => {
               ) : streamingInfo ? (
                 <div className="space-y-4 sm:space-y-6">
                   
-                  {/* Iframe */}
-                  {selectedServerUrl ? (
+                  {/* Video Player: Native Player (No Ads) or Sandboxed Iframe (No Popups) */}
+                  {useNativePlayer && directStreamUrl ? (
+                    <ReproductorNativo
+                      src={directStreamUrl}
+                      poster={animeInfo?.imagen}
+                      title={`${animeInfo?.titulo} - Episodio ${activeStreamingEpisode?.numero}`}
+                      initialTime={savedProgress?.episode_url === activeStreamingEpisode?.url ? (savedProgress?.progress_seconds || 0) : 0}
+                      onProgress={(curr, dur) => saveProgress(activeStreamingEpisode, curr, dur)}
+                      onEnded={() => {
+                        if (currentIdx !== -1 && currentIdx < sortedEpisodes.length - 1) {
+                          handleVerOnline(sortedEpisodes[currentIdx + 1]);
+                        }
+                      }}
+                      onPrevEpisode={() => handleVerOnline(sortedEpisodes[currentIdx - 1])}
+                      onNextEpisode={() => handleVerOnline(sortedEpisodes[currentIdx + 1])}
+                      hasPrev={currentIdx > 0}
+                      hasNext={currentIdx !== -1 && currentIdx < sortedEpisodes.length - 1}
+                      onSwitchToIframe={() => setUseNativePlayer(false)}
+                    />
+                  ) : selectedServerUrl ? (
                     <div className="relative w-full aspect-video rounded-none sm:rounded-2xl overflow-hidden bg-black border-y sm:border border-[#00f2ff]/30 shadow-2xl group">
                       <iframe
                         src={selectedServerUrl}
@@ -927,22 +930,31 @@ export const Buscar = () => {
                         referrerPolicy="no-referrer-when-downgrade"
                         allowFullScreen
                         allow="autoplay; encrypted-media; picture-in-picture"
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                         className="absolute inset-0 w-full h-full border-none"
                       />
-                      {(selectedServerUrl.includes('zilla') || selectedServerName.toLowerCase().includes('hls')) && (
-                        <div className="absolute top-3 right-3 z-10">
+                      <div className="absolute top-3 right-3 z-10 flex gap-2">
+                        {directStreamUrl && (
+                          <button
+                            onClick={() => setUseNativePlayer(true)}
+                            className="px-3 py-1.5 rounded-xl bg-[#00f2ff] hover:bg-[#70f3ff] text-black font-extrabold text-[11px] backdrop-blur-md shadow-lg border border-[#00f2ff] flex items-center gap-1.5 transition-all cursor-pointer"
+                            title="Volver a Reproductor Nativo sin anuncios"
+                          >
+                            <span>⚡ Modo Nativo</span>
+                          </button>
+                        )}
+                        {(selectedServerUrl.includes('zilla') || selectedServerName.toLowerCase().includes('hls')) && (
                           <a
                             href={selectedServerUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-extrabold text-[11px] backdrop-blur-md shadow-lg border border-rose-400/40 flex items-center gap-1.5 transition-all cursor-pointer"
-                            title="Si el reproductor HLS se bloquea por Cloudflare, pulsa para abrirlo en pestaña directa"
+                            title="Abrir en pestaña directa"
                           >
-                            <span>↗ Abrir HLS en Pestaña Directa</span>
+                            <span>↗ Abrir en Pestaña</span>
                           </a>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="aspect-video w-full rounded-none sm:rounded-2xl bg-[#081631] flex flex-col justify-center items-center py-20 border-y sm:border border-white/10">

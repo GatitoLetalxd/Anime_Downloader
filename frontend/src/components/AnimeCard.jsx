@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { getProxiedImageUrl } from '../lib/api';
 
 export const AnimeCard = memo(({ anime, onClick }) => {

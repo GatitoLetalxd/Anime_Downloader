@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { obtenerRecomendaciones, obtenerGeneros, getProxiedImageUrl, getAdultContentState, toggleAdultContentState } from '../lib/api';
 import AnimeCard, { SkeletonAnimeCard } from '../components/AnimeCard';
@@ -14,7 +14,7 @@ export const Inicio = () => {
   const [loading, setLoading] = useState(true);
   const [genres, setGenres] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [activeProvider, setActiveProvider] = useState('animeav1');
+  const [activeProvider, setActiveProvider] = useState('tvanime');
   const [showAdultWarning, setShowAdultWarning] = useState(false);
   const [continueWatching, setContinueWatching] = useState([]);
   const [showAdultContent, setShowAdultContent] = useState(getAdultContentState);
@@ -58,7 +58,7 @@ export const Inicio = () => {
         if (data.success) {
           setContinueWatching(data.data.slice(0, 6));
         }
-      } catch (_err) {
+      } catch {
         // silent
       }
     };
@@ -228,7 +228,7 @@ export const Inicio = () => {
               <div
                 key={item.id}
                 className="flex-shrink-0 w-36 cursor-pointer group"
-                onClick={() => navigate(`/buscar?url=${encodeURIComponent(item.anime_url)}`)}
+                onClick={() => navigate(`/buscar?url=${encodeURIComponent(item.anime_url)}&episode=${item.episode_num}&resume=1`)}
               >
                 <div className="relative w-36 h-52 rounded-2xl overflow-hidden border border-white/10 shadow-xl mb-2 group-hover:border-[#00f2ff]/50 transition-all">
                   {item.anime_cover ? (
@@ -248,10 +248,22 @@ export const Inicio = () => {
                     </div>
                   )}
 
-                  {/* Episode badge */}
-                  <div className="absolute bottom-2 right-2 bg-[#030b1e]/90 border border-[#00f2ff]/30 text-[#00f2ff] text-[10px] font-black px-2 py-0.5 rounded-md">
-                    Ep. {item.episode_num}
+                  {/* Episode badge & timestamp */}
+                  <div className="absolute bottom-2 right-2 bg-[#030b1e]/90 border border-[#00f2ff]/30 text-[#00f2ff] text-[10px] font-black px-2 py-0.5 rounded-md backdrop-blur-md">
+                    Ep. {item.episode_num} {item.progress_seconds > 0 ? `• ${Math.floor(item.progress_seconds / 60)}m` : ''}
                   </div>
+
+                  {/* Visual Progress Bar (Exact Seconds) */}
+                  {item.duration_seconds > 0 && item.progress_seconds > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/70 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#00f2ff] to-[#70f3ff] shadow-[0_0_8px_#00f2ff]"
+                        style={{
+                          width: `${Math.min(100, Math.round((item.progress_seconds / item.duration_seconds) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Cyber Play Overlay */}
                   <div className="absolute inset-0 bg-[#030b1e]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
@@ -340,6 +352,16 @@ export const Inicio = () => {
           {/* Provider selector tab */}
           <div className="flex bg-[#081631] border border-white/10 p-1.5 rounded-2xl self-end">
             <button
+              onClick={() => setActiveProvider('tvanime')}
+              className={`px-4 py-2 text-xs font-extrabold rounded-xl tracking-wider transition-all ${
+                activeProvider === 'tvanime'
+                  ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/40 glow-cyan'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              TVAnime
+            </button>
+            <button
               onClick={() => setActiveProvider('animeav1')}
               className={`px-4 py-2 text-xs font-extrabold rounded-xl tracking-wider transition-all ${
                 activeProvider === 'animeav1'
@@ -348,16 +370,6 @@ export const Inicio = () => {
               }`}
             >
               AnimeAV1
-            </button>
-            <button
-              onClick={() => setActiveProvider('animeflv')}
-              className={`px-4 py-2 text-xs font-extrabold rounded-xl tracking-wider transition-all ${
-                activeProvider === 'animeflv'
-                  ? 'bg-[#00f2ff]/20 text-[#00f2ff] border border-[#00f2ff]/40 glow-cyan'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              AnimeFLV
             </button>
           </div>
         </div>

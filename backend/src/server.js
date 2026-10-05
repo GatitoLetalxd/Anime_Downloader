@@ -45,11 +45,12 @@ app.use("/api/downloads", express.static(downloadsDir, staticDownloadOptions));
 app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
-    message: "Anime1v API backend reconstruido",
-    version: "1.0.0",
+    message: "LunielAnime API – Backend v2",
+    version: "2.0.0",
     endpoints: {
-      modern: ["/api/v1/anime/search", "/api/v1/anime/info", "/api/v1/anime/episode"],
-      legacy: ["/api/anime1v/search", "/api/anime1v/info", "/api/anime1v/episode"],
+      anime: ["/api/v1/anime/search", "/api/v1/anime/info", "/api/v1/anime/episode", "/api/v1/anime/direct-stream"],
+      user: ["/api/user/favorites", "/api/user/progress", "/api/user/profile"],
+      admin: ["/api/admin/stats", "/api/admin/users", "/api/admin/scraper-health"],
     },
   });
 });

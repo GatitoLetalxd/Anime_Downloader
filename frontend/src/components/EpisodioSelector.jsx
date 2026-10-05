@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 export const EpisodioSelector = ({ episodios, onSelectionChange, onDownloadSelected, onVerOnline }) => {
   const [selectedUrls, setSelectedUrls] = useState(new Set());

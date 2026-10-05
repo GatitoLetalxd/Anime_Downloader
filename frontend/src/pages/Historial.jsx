@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getAllLocalDownloads, deleteLocalDownload } from '../lib/db';
 
 export const Historial = () => {
@@ -97,26 +97,6 @@ export const Historial = () => {
       verifyFiles();
     }
   }, [historial]);
-
-  const handleRequestPermission = async (item) => {
-    if (!item.handle) return;
-    try {
-      const perm = await item.handle.requestPermission({ mode: 'read' });
-      if (perm === 'granted') {
-        await item.handle.getFile();
-        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'available' }));
-      } else {
-        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'needs_permission' }));
-      }
-    } catch (err) {
-      if (err.name === 'NotFoundError') {
-        setFileStatuses((prev) => ({ ...prev, [item.downloadId]: 'moved_or_deleted' }));
-        alert('El archivo no se encontró. Posiblemente fue movido o eliminado.');
-      } else {
-        alert(`Error al acceder al archivo: ${err.message}`);
-      }
-    }
-  };
 
   const handlePlayLocal = async (item) => {
     if (!item.handle) return;

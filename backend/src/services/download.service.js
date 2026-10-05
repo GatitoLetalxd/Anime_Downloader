@@ -4,9 +4,6 @@ const { randomUUID } = require("node:crypto");
 const { pipeline } = require("node:stream/promises");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const ffmpeg = require("fluent-ffmpeg");
-const systemFfmpeg = process.platform === "win32" ? require("ffmpeg-static") : "ffmpeg";
-ffmpeg.setFfmpegPath(systemFfmpeg);
 const { ApiError } = require("../utils/api-error");
 const animeService = require("./anime.service");
 
@@ -155,7 +152,7 @@ const HTML_HEADERS = {
   "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
 };
 
-const SERVER_PRIORITY = ["mp4upload", "yourupload", "pdrain", "1fichier", "hls", "upnshare", "mega"];
+const SERVER_PRIORITY = ["yourupload", "mp4upload", "voe", "upnshare", "mega", "1fichier", "pdrain"];
 
 function getDownloadsDir() {
   const configuredPath = process.env.DOWNLOADS_DIR || "downloads";
@@ -571,33 +568,6 @@ async function resolveOkruUrl(url, referer) {
     return null;
   }
 }
-
-async function resolveFembedUrl(url, referer) {
-  debugLog("Fembed", "Resolving URL", url);
-  try {
-    const { html, headers } = await fetchHtmlWithHeaders(url, referer);
-    debugLog("Fembed", "Fetched HTML length", html.length);
-    debugLog("Fembed", "Content-Type", headers["content-type"]);
-
-    const extracted = findFirstUrl(html, [
-      /sources?\s*:\s*\[\s*\{[^}]*src\s*:\s*["']([^"']+)["']/i,
-      /file["']?\s*:\s*["']([^"']+)["']/i,
-      /video\s*=\s*["']([^"']+\.mp4[^"']*)["']/i,
-    ]);
-
-    if (extracted) {
-      debugLog("Fembed", "Found URL", extracted);
-      return extracted;
-    }
-
-    debugLog("Fembed", "No URL found");
-    return null;
-  } catch (err) {
-    debugLog("Fembed", "Error", err.message);
-    return null;
-  }
-}
-
 async function resolveVoeUrl(url, referer) {
   debugLog("VOE", "Resolving URL", url);
   try {
@@ -739,81 +709,6 @@ async function resolveDoodstreamUrl(url, referer) {
   }
 }
 
-async function resolveHqqUrl(url, referer) {
-  debugLog("Hqq/Netu", "Resolving URL", url);
-  try {
-    const { html, headers } = await fetchHtmlWithHeaders(url, referer);
-    debugLog("Hqq/Netu", "Fetched HTML length", html.length);
-    debugLog("Hqq/Netu", "Content-Type", headers["content-type"]);
-
-    const extracted = findFirstUrl(html, [
-      /sources?\s*:\s*\[\s*\{[^}]*file\s*:\s*["'](https?:\/\/[^"']+)["']/i,
-      /file\s*:\s*"([^"]+\.mp4[^"]*)"/i,
-      /video(?:\d+)?\s*=\s*["']([^"']+\.mp4[^"']+)["']/i,
-    ]);
-
-    if (extracted) {
-      debugLog("Hqq/Netu", "Found URL", extracted);
-      return extracted;
-    }
-
-    debugLog("Hqq/Netu", "No URL found");
-    return null;
-  } catch (err) {
-    debugLog("Hqq/Netu", "Error", err.message);
-    return null;
-  }
-}
-
-function tryDecodeJKPlayerUrl(encodedUrl) {
-  if (!encodedUrl) {
-    return null;
-  }
-
-  try {
-    const decoded = Buffer.from(encodedUrl, "base64").toString("utf8");
-    const urlMatch = decoded.match(/(https?:\/\/[^\s]+)/);
-    if (urlMatch && urlMatch[1]) {
-      return urlMatch[1].split("&")[0];
-    }
-
-    if (decoded.includes("http")) {
-      return decoded.split("&")[0];
-    }
-  } catch (_e) {
-    // Ignore
-  }
-  return null;
-}
-
-async function resolveJKPlayerUrl(url, referer) {
-  debugLog("JKPlayer", "Resolving URL", url);
-  try {
-    const parsedUrl = new URL(url);
-    const eParam = parsedUrl.searchParams.get("e");
-
-    if (eParam) {
-      const decodedUrl = tryDecodeJKPlayerUrl(eParam);
-      if (decodedUrl && decodedUrl.startsWith("http")) {
-        debugLog("JKPlayer", "Decoded URL", decodedUrl);
-        return decodedUrl;
-      }
-    }
-
-    const { html, headers } = await fetchHtmlWithHeaders(url, referer);
-    debugLog("JKPlayer", "Fetched HTML length", html.length);
-
-    const scriptMatch = html.match(/player\.setup\(\{[\s\S]*?sources\s*:\s*\[\s*\{[\s\S]*?file\s*:\s*"([^"]+)"[\s\S]*?\}[\s\S]*?\]\}/);
-    if (scriptMatch && scriptMatch[1]) {
-      return scriptMatch[1];
-    }
-
-    return null;
-  } catch (err) {
-    debugLog("JKPlayer", "Error", err.message);
-    return null;
-  }
-}
 
 async function resolveMp4uploadUrl(url, referer) {
   debugLog("Mp4upload", "Resolving URL", url);
@@ -911,26 +806,6 @@ async function resolveEmbedUrl(url, record, candidate) {
     return resolved;
   }
 
-  if (/embedsito|fembed|mycloud/i.test(host)) {
-    debugLog("resolveEmbed", "Using Fembed resolver", null);
-    const resolved = await resolveFembedUrl(url, referer);
-    if (!resolved) throw new Error("No se pudo resolver enlace directo en Fembed");
-    return resolved;
-  }
-
-  if (/hqq\.tv|netu|waaw/i.test(host)) {
-    debugLog("resolveEmbed", "Using Hqq/Netu resolver", null);
-    const resolved = await resolveHqqUrl(url, referer);
-    if (!resolved) throw new Error("No se pudo resolver enlace directo en Hqq/Netu");
-    return resolved;
-  }
-
-  if (/jkplayers|jkanime/i.test(host) || /\/jkplayer\//.test(pathname)) {
-    debugLog("resolveEmbed", "Using JKPlayer resolver", null);
-    const resolved = await resolveJKPlayerUrl(url, referer);
-    if (!resolved) throw new Error("No se pudo resolver enlace directo en JKPlayer");
-    return resolved;
-  }
 
   if (/vidhidevip|vidhide/i.test(host)) {
     debugLog("resolveEmbed", "Using Vidhide resolver", null);
@@ -968,7 +843,7 @@ async function resolveEmbedUrl(url, record, candidate) {
   }
 
   // 3. PUPPETEER PROTECTED SITE FALLBACK
-  const isProtectedSite = /animeflv|streamwish|vidhide|mixdrop/i.test(host);
+  const isProtectedSite = /streamwish|vidhide|mixdrop/i.test(host);
   if (isProtectedSite) {
     debugLog("resolveEmbed", "Using puppeteer for protected site", null);
     const resolved = await resolveEmbedWithPuppeteer(url, referer);
@@ -1013,6 +888,16 @@ function chooseCandidateLinks(episodeData, variant, preferredServer, excludeServ
     }
 
     const sName = (item.server || "").toLowerCase();
+    const urlLower = key.toLowerCase();
+
+    // Discard servers with intrusive ads/malware, popups, or dead connection (e.g. zilla-networks)
+    if (
+      /streamwish|sfastwish|flaswish|doodstream|dsvplay|fviplions|player\.zilla-networks\.com/i.test(sName) ||
+      /streamwish|sfastwish|flaswish|doodstream|dsvplay|fviplions|player\.zilla-networks\.com/i.test(urlLower)
+    ) {
+      continue;
+    }
+
     if (excludeServer && sName.includes(String(excludeServer).toLowerCase())) {
       continue;
     }
@@ -1116,74 +1001,23 @@ function resolveDirectDownloadUrl(rawUrl, serverName) {
   return rawUrl;
 }
 
-async function downloadHlsVideo(finalUrl, filePath, record, candidate) {
-  record.status = "downloading";
-  record.currentServer = candidate.server;
-  record.sourceUrl = finalUrl;
-  record.totalBytes = null;
-  record.downloadedBytes = 0;
-  record.progress = 1;
-  record.updatedAt = Date.now();
-
-  const referer = getRefererForUrl(candidate.url || record.url || finalUrl);
-
-  return new Promise((resolve, reject) => {
-    ffmpeg(finalUrl)
-      .inputOptions([
-        '-headers',
-        `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\nReferer: ${referer}\r\n`
-      ])
-      .outputOptions([
-        "-c copy",
-        "-bsf:a aac_adtstoasc"
-      ])
-      .output(filePath)
-      .on("start", () => {
-        record.status = "downloading";
-        record.progress = 1;
-        record.updatedAt = Date.now();
-      })
-      .on("progress", (progress) => {
-        if (progress.percent && progress.percent > 0) {
-          record.progress = Math.max(1, Math.min(99, Math.floor(progress.percent)));
-        } else {
-          // Si ffmpeg no nos da un %, subimos el progreso visualmente poco a poco
-          record.progress = Math.min(90, record.progress + 1);
-        }
-        record.updatedAt = Date.now();
-        try {
-          const socket = require("../utils/socket");
-          socket.emitProgress(record.downloadId, record.progress, "HLS Descargando", "HLS Stream");
-        } catch (err) {}
-      })
-      .on("error", async (err) => {
-        await removeFileIfExists(filePath);
-        reject(new Error(`Transferencia fallida en ${candidate.server} (HLS): ${err.message}`));
-      })
-      .on("end", () => {
-        resolve();
-      })
-      .run();
-  });
-}
-
 async function downloadFromUrl(record, candidate) {
   let finalUrl = resolveDirectDownloadUrl(candidate.url, candidate.server);
   finalUrl = await resolveEmbedUrl(finalUrl, record, candidate);
   if (!finalUrl) {
     throw new Error(`No se pudo resolver enlace directo en ${candidate.server}`);
   }
+
+  const isHls = finalUrl.toLowerCase().includes(".m3u8") || /hls|zilla/i.test(candidate.server);
+  if (isHls) {
+    throw new Error(`Las descargas por HLS (${candidate.server}) están deshabilitadas`);
+  }
+
   const downloadsDir = getDownloadsDir();
   const fileName = makeDownloadFilename(record, finalUrl, candidate.server);
   const filePath = path.join(downloadsDir, fileName);
 
   const referer = getRefererForUrl(candidate.url || record.url || finalUrl);
-
-  const isHls = finalUrl.toLowerCase().includes(".m3u8") || /hls/i.test(candidate.server);
-
-  if (isHls) {
-    await downloadHlsVideo(finalUrl, filePath, record, candidate);
-  } else {
     let response;
     try {
       const timeout = Number(process.env.DOWNLOAD_REQUEST_TIMEOUT_MS || 120000);
@@ -1257,7 +1091,6 @@ async function downloadFromUrl(record, candidate) {
       await removeFileIfExists(filePath);
       throw new Error(`Transferencia fallida en ${candidate.server}: ${error.message}`);
     }
-  }
 
   const stat = await fs.promises.stat(filePath);
   if (!stat.size || stat.size < 512 * 1024) {
@@ -1325,20 +1158,27 @@ async function resolveEpisodeDirectUrl(episodeUrl, variant, preferredServer, exc
   const episodeResponse = await animeService.getEpisodeLinks(episodeUrl, "true");
   const candidates = chooseCandidateLinks(episodeResponse.data, variant, preferredServer, excludeServer);
 
-  if (candidates.length === 0) {
-    throw new Error("No se encontraron enlaces para este episodio");
+  // Exclude HLS/Zilla from download candidate resolution
+  const nonHlsCandidates = candidates.filter((c) => !/hls|zilla/i.test(c.server));
+
+  if (nonHlsCandidates.length === 0) {
+    throw new Error("No hay servidores de descarga directa disponibles (HLS no soportado para descargas)");
   }
 
   const errors = [];
-  for (const candidate of candidates) {
+  for (const candidate of nonHlsCandidates) {
     try {
       let finalUrl = resolveDirectDownloadUrl(candidate.url, candidate.server);
       finalUrl = await resolveEmbedUrl(finalUrl, { url: episodeUrl, quality: "1080p", downloadId: "temp" }, candidate);
       if (finalUrl && isLikelyVideoUrl(finalUrl)) {
+        if (finalUrl.toLowerCase().includes(".m3u8") || /hls|zilla/i.test(candidate.server)) {
+          errors.push(`${candidate.server}: Enlace HLS omitido`);
+          continue;
+        }
         return {
           directUrl: finalUrl,
           server: candidate.server,
-          isHls: finalUrl.toLowerCase().includes(".m3u8") || /hls/i.test(candidate.server),
+          isHls: false,
           referer: getRefererForUrl(candidate.url || episodeUrl || finalUrl),
         };
       } else {
@@ -1431,17 +1271,43 @@ function createBatch(payload, baseUrl) {
     throw new ApiError(400, "Se requiere un arreglo de episodes con al menos un elemento");
   }
 
-  const normalizedEpisodes = episodes
-    .map((item) => Number(item))
-    .filter((item) => Number.isFinite(item) && item > 0);
+  // Detect format early before normalization
+  const isObjectFormat =
+    typeof episodes[0] === "object" && episodes[0] !== null && episodes[0].url;
 
-  if (normalizedEpisodes.length === 0) {
-    throw new ApiError(400, "episodes debe contener numeros de episodio validos");
+  // For number-based format: validate that they are all valid positive numbers
+  const normalizedEpisodes = isObjectFormat
+    ? episodes
+    : episodes.map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0);
+
+  if (!isObjectFormat && normalizedEpisodes.length === 0) {
+    throw new ApiError(400, "episodes debe contener numeros de episodio validos o objetos { url, number }");
   }
 
   const batchId = randomUUID();
-  const entries = normalizedEpisodes.map((episodeNumber) => {
-    const episodeUrl = `${animeUrl.replace(/\/$/, "")}/${episodeNumber}`;
+
+  let episodeItems = [];
+
+  if (isObjectFormat) {
+    episodeItems = normalizedEpisodes
+      .filter((item) => item && typeof item.url === "string" && item.url.trim())
+      .map((item) => ({ episodeUrl: item.url.trim(), episodeNumber: Number(item.number) || 0 }));
+  } else {
+    episodeItems = normalizedEpisodes.map((episodeNumber) => {
+      const baseNoSlash = animeUrl.replace(/\/$/, "");
+      let episodeUrl;
+      if (baseNoSlash.includes("tvanime.tv") || baseNoSlash.includes("animefenix")) {
+        // TVAnime format: /anime/{slug}/episodio/episodio-N
+        episodeUrl = `${baseNoSlash}/episodio/episodio-${episodeNumber}`;
+      } else {
+        // Legacy format (AnimeAV1, TioAnime): /ver/{anime}-N
+        episodeUrl = `${baseNoSlash}/${episodeNumber}`;
+      }
+      return { episodeUrl, episodeNumber };
+    });
+  }
+
+  const entries = episodeItems.map(({ episodeUrl, episodeNumber }) => {
     const created = createDownload(
       {
         url: episodeUrl,
@@ -1460,6 +1326,7 @@ function createBatch(payload, baseUrl) {
       status: created.status,
     };
   });
+
 
   const batch = {
     batchId,
@@ -1515,6 +1382,33 @@ function getBatch(batchId) {
   };
 }
 
+/**
+ * Periodically cleans up downloads older than maxAgeHours to prevent disk exhaustion.
+ */
+function purgeOldDownloads(maxAgeHours = 6) {
+  try {
+    const dir = getDownloadsDir();
+    if (!fs.existsSync(dir)) return;
+    const now = Date.now();
+    const maxAgeMs = maxAgeHours * 60 * 60 * 1000;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      if (file.endsWith(".apk")) continue; // Preserve application APKs
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isFile() && (now - stat.mtimeMs) > maxAgeMs) {
+        fs.unlinkSync(filePath);
+        console.log(`[DownloadCleaner] Purged old temporary download: ${file}`);
+      }
+    }
+  } catch (err) {
+    console.error("[DownloadCleaner] Error purging downloads:", err.message);
+  }
+}
+
+// Check every 30 minutes
+setInterval(() => purgeOldDownloads(6), 30 * 60 * 1000);
+
 module.exports = {
   createDownload,
   getDownload,
@@ -1526,4 +1420,6 @@ module.exports = {
   extractEpisodeNumber,
   getExtensionFromUrl,
   getRefererForUrl,
+  purgeOldDownloads,
 };
+
